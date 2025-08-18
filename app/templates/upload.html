@@ -1,0 +1,43 @@
+{% extends "template.html" %}
+{% block content %}
+  <h1 class="h4 mb-3">Upload Image</h1>
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-6">
+          <input id="fileInput" type="file" class="form-control" accept="image/*" />
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+          <button id="uploadBtn" class="btn btn-secondary">Upload</button>
+        </div>
+        <div class="col-12 col-md-4">
+          <span class="text-muted">New image id: <code id="newImageId">—</code></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <a href="/images" class="btn btn-outline-primary">Go to My Images</a>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("uploadBtn").addEventListener("click", async () => {
+  const f = document.getElementById("fileInput").files[0];
+  if (!f) return alert("Pick a file first.");
+  try {
+    const fd = new FormData();
+    fd.append("file", f);
+    const token = getToken();
+    const res = await fetch(BASE + "/images", {
+      method: "POST",
+      headers: token ? { Authorization: "Bearer " + token } : {},
+      body: fd,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const j = await res.json();
+    document.getElementById("newImageId").textContent = j.id;
+  } catch (e) {
+    alert("Upload failed: " + e.message);
+  }
+});
+</script>
+{% endblock %}

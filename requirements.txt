@@ -1,0 +1,5 @@
+flask==3.0.*
+flask-cors==4.*
+pyjwt==2.*
+pillow==10.*
+python-dotenv==1.*
