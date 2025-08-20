@@ -1,6 +1,7 @@
 {% extends "template.html" %}
 {% block content %}
   <h1 class="h4 mb-3">Jobs</h1>
+
   <div class="card mb-3">
     <div class="card-body">
       <div class="row g-2 align-items-end">
@@ -8,17 +9,15 @@
           <label class="form-label">image_id</label>
           <input id="jobImageId" class="form-control" placeholder="paste or choose from Images page" />
         </div>
-        <div class="col-6 col-md-2">
-          <label class="form-label">repeat</label>
-          <input id="repeat" type="number" class="form-control" min="1" value="5" />
+        <div class="col-6 col-md-3">
+          <label class="form-label">Intensity (extra passes)</label>
+          <input id="extraPasses" type="number" class="form-control" min="0" value="0" />
         </div>
-        <div class="col-6 col-md-2 d-grid">
-          <button id="runBtn" class="btn btn-dark">Run pipeline</button>
+        <div class="col-6 col-md-3 d-grid">
+          <button id="runBtn" class="btn btn-dark">Optimize for Web</button>
         </div>
         <div class="col-12">
-          <div class="text-muted small mt-2">Steps:
-            <code>["resize_4k","gaussian_blur","sharpen"]</code>
-          </div>
+          <div class="text-muted small mt-2">Generates: 160/320 thumbs, 720p, 1080p, 4K (if applicable) in JPG + WEBP.</div>
           <div id="jobResult" class="text-muted mt-2"></div>
         </div>
       </div>
@@ -38,57 +37,58 @@
   </div>
   <div id="jobsTableWrap"></div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-function fillFromImagesPage() {
+function fillFromImagesPage(){
   const last = localStorage.getItem("last_image_id");
   if (last) document.getElementById("jobImageId").value = last;
 }
-function jobRow(j) {
+function jobRow(j){
   const created = j.created_at ? j.created_at.replace('T',' ').slice(0,19) : '';
+  const out = (j.outputs||[]).map(o => o.name).join(", ");
   return `<tr>
     <td><code>${j.id}</code></td>
     <td>${j.owner}</td>
     <td><code>${j.image_id}</code></td>
+    <td>${j.preset}</td>
     <td>${j.status}</td>
     <td>${j.duration_ms ?? ""}</td>
+    <td>${out}</td>
     <td>${created}</td>
   </tr>`;
 }
-async function createJob() {
+async function createJob(){
   const image_id = document.getElementById("jobImageId").value.trim();
-  const repeat = Number(document.getElementById("repeat").value) || 5;
+  const extra    = Number(document.getElementById("extraPasses").value) || 0;
   if (!image_id) return alert("Provide an image_id");
-  try {
-    const j = await api("/jobs", {
-      method: "POST",
-      body: JSON.stringify({ image_id, pipeline: ["resize_4k","gaussian_blur","sharpen"], repeat })
-    });
+  try{
+    const j = await api("/jobs", { method:"POST", body: JSON.stringify({ image_id, extra_passes: extra }) });
     document.getElementById("jobResult").textContent =
-      `job_id=${j.job_id}, status=${j.status}, duration_ms=${j.duration_ms}`;
+      `job_id=${j.job_id}, status=${j.status}, duration_ms=${j.duration_ms}, outputs=${(j.outputs||[]).length}`;
     await loadJobs();
-  } catch (e) {
-    alert("Create job failed: " + e.message);
-  }
+  }catch(e){ alert("Create job failed: "+e.message); }
 }
-async function loadJobs() {
-  try {
+async function loadJobs(){
+  try{
     const limit  = Number(document.getElementById("jobLimit").value) || 10;
     const offset = Number(document.getElementById("jobOffset").value) || 0;
     const j = await api(`/jobs?limit=${limit}&offset=${offset}`);
     document.getElementById("jobsTableWrap").innerHTML =
       `<div class="text-muted mb-2">total: ${j.total}</div>
-       <table class="table table-striped table-sm">
-         <thead><tr><th>ID</th><th>Owner</th><th>Image</th><th>Status</th><th>Duration (ms)</th><th>Created</th></tr></thead>
-         <tbody>${j.items.map(jobRow).join("")}</tbody>
-       </table>`;
-  } catch (e) {
-    alert("Load jobs failed: " + e.message);
-  }
+       <div class="table-responsive">
+         <table class="table table-striped table-sm">
+           <thead><tr>
+             <th>ID</th><th>Owner</th><th>Image</th><th>Preset</th>
+             <th>Status</th><th>Duration (ms)</th><th>Outputs</th><th>Created</th>
+           </tr></thead>
+           <tbody>${j.items.map(jobRow).join("")}</tbody>
+         </table>
+       </div>`;
+  }catch(e){ alert("Load jobs failed: "+e.message); }
 }
 document.getElementById("runBtn").addEventListener("click", createJob);
 document.getElementById("refreshJobsBtn").addEventListener("click", loadJobs);
-fillFromImagesPage();
-loadJobs();
+fillFromImagesPage(); loadJobs();
 </script>
 {% endblock %}

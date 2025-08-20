@@ -1,43 +1,39 @@
 {% extends "template.html" %}
 {% block content %}
-  <h1 class="h4 mb-3">Upload Image</h1>
-  <div class="card mb-3">
-    <div class="card-body">
-      <div class="row g-2 align-items-center">
-        <div class="col-12 col-md-6">
-          <input id="fileInput" type="file" class="form-control" accept="image/*" />
-        </div>
-        <div class="col-12 col-md-2 d-grid">
-          <button id="uploadBtn" class="btn btn-secondary">Upload</button>
-        </div>
-        <div class="col-12 col-md-4">
-          <span class="text-muted">New image id: <code id="newImageId">—</code></span>
-        </div>
-      </div>
-    </div>
+  <h1 class="h4 mb-3">Upload</h1>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="file" class="form-control mb-2" />
+    <button type="submit" class="btn btn-dark">Upload</button>
+  </form>
+
+  <hr>
+
+  <div class="input-group mb-2" style="max-width:300px;">
+    <input id="stockQuery" type="text" class="form-control" placeholder="e.g. mountains" />
+    <button id="stockBtn" class="btn btn-outline-secondary">Import Stock Image</button>
   </div>
-  <a href="/images" class="btn btn-outline-primary">Go to My Images</a>
+
+  <div id="uploadResult" class="text-muted mt-2"></div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-document.getElementById("uploadBtn").addEventListener("click", async () => {
-  const f = document.getElementById("fileInput").files[0];
-  if (!f) return alert("Pick a file first.");
-  try {
-    const fd = new FormData();
-    fd.append("file", f);
-    const token = getToken();
-    const res = await fetch(BASE + "/images", {
-      method: "POST",
-      headers: token ? { Authorization: "Bearer " + token } : {},
-      body: fd,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const j = await res.json();
-    document.getElementById("newImageId").textContent = j.id;
-  } catch (e) {
-    alert("Upload failed: " + e.message);
-  }
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = getToken();
+  if (!token) return location.href="/login";
+
+  const form = e.target;
+  const fd = new FormData(form);
+  const res = await fetch(`${BASE}/images`, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token },
+    body: fd
+  });
+  const j = await res.json();
+  document.getElementById("uploadResult").textContent = JSON.stringify(j);
 });
+
+
 </script>
 {% endblock %}

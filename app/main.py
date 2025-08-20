@@ -8,6 +8,8 @@ from .routers.jobs import jobs_bp
 
 def create_app():
     app = Flask(__name__, static_folder="static", static_url_path="/static", template_folder="templates")
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+    app.jinja_env.auto_reload = True
     app.config["JWT_SECRET"] = os.getenv("JWT_SECRET", "devsecret")
     app.config["DATA_DIR"]   = os.getenv("DATA_DIR", "/data")
 

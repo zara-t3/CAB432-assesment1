@@ -3,3 +3,4 @@ flask-cors==4.*
 pyjwt==2.*
 pillow==10.*
 python-dotenv==1.*
+requests==2.*

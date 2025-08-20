@@ -22,24 +22,20 @@ if (logoutBtn) {
 
 async function api(path, opts = {}) {
   const headers = new Headers(opts.headers || {});
-  if (!(opts.body instanceof FormData)) {
-    headers.set("Content-Type", "application/json");
-  }
+  if (!(opts.body instanceof FormData)) headers.set("Content-Type", "application/json");
   headers.set("Accept", "application/json");
   const token = getToken();
   if (token) headers.set("Authorization", "Bearer " + token);
 
   const res = await fetch(BASE + path, { ...opts, headers });
+  const isJson = res.headers.get("content-type")?.includes("application/json");
   if (!res.ok) {
     let msg = `${res.status} ${res.statusText}`;
-    try {
-      const j = await res.json();
-      if (j.error) msg += ` - ${j.error}`;
-    } catch {}
+    if (isJson) {
+      const body = await res.json().catch(() => null);
+      if (body) msg += ` - ${JSON.stringify(body)}`;
+    }
     throw new Error(msg);
   }
-  if (res.headers.get("content-type")?.includes("application/json")) {
-    return res.json();
-  }
-  return res;
+  return isJson ? res.json() : res;
 }
