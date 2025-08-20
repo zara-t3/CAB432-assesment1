@@ -6,7 +6,7 @@ auth_bp = Blueprint("auth", __name__)
 
 USERS = {
     "admin": {"password": "admin123", "role": "admin"},
-    "zara":  {"password": "zara123",  "role": "user"},
+    "student":  {"password": "student123",  "role": "user"},
 }
 
 def auth_required(fn):
