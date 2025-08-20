@@ -1,39 +1,153 @@
 {% extends "template.html" %}
 {% block content %}
-  <h1 class="h4 mb-3">Upload</h1>
-  <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="file" class="form-control mb-2" />
-    <button type="submit" class="btn btn-dark">Upload</button>
-  </form>
+  <h1 class="h4 mb-3">Upload & Import</h1>
 
-  <hr>
-
-  <div class="input-group mb-2" style="max-width:300px;">
-    <input id="stockQuery" type="text" class="form-control" placeholder="e.g. mountains" />
-    <button id="stockBtn" class="btn btn-outline-secondary">Import Stock Image</button>
+  <!-- Local upload -->
+  <div class="card mb-3">
+    <div class="card-header">Upload local file</div>
+    <div class="card-body">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-6">
+          <input id="fileInput" type="file" class="form-control" accept="image/*" />
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+          <button id="uploadBtn" class="btn btn-secondary">Upload</button>
+        </div>
+        <div class="col-12 col-md-4">
+          <span class="text-muted">New image id: <code id="newImageId">—</code></span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div id="uploadResult" class="text-muted mt-2"></div>
+  <!-- Random stock image (External API) -->
+  <div class="card mb-3">
+    <div class="card-header">Random stock image (Unsplash → Picsum)</div>
+    <div class="card-body">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-3 d-grid">
+          <button id="importBtn" class="btn btn-outline-primary">Get Random Image</button>
+        </div>
+        <div class="col-12 col-md-9">
+          <span class="text-muted">Imported image id: <code id="importImageId">—</code></span>
+        </div>
+      </div>
+
+      <!-- Preview card -->
+      <div id="previewCard" class="card mt-3 d-none">
+        <div class="card-body">
+          <div class="d-flex align-items-start gap-3">
+            <img id="previewImg" alt="preview" class="rounded border" style="max-width: 320px; height: auto;">
+            <div class="flex-grow-1">
+              <div class="mb-2 text-muted small">
+                This is the original (thumb preview). You can view/download the full original from the Images page.
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button id="viewOriginalBtn" class="btn btn-link p-0">View original</button>
+                <button id="optimizeBtn" class="btn btn-dark">Optimize for Web</button>
+                <a href="/images" class="btn btn-outline-secondary">Go to My Images</a>
+              </div>
+              <div id="optimizeStatus" class="text-muted small mt-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const token = getToken();
-  if (!token) return location.href="/login";
-
-  const form = e.target;
-  const fd = new FormData(form);
-  const res = await fetch(`${BASE}/images`, {
-    method: "POST",
-    headers: { Authorization: "Bearer " + token },
-    body: fd
-  });
-  const j = await res.json();
-  document.getElementById("uploadResult").textContent = JSON.stringify(j);
+// ---------- Local upload ----------
+document.getElementById("uploadBtn").addEventListener("click", async () => {
+  const f = document.getElementById("fileInput").files[0];
+  if (!f) return alert("Pick a file first.");
+  try {
+    const fd = new FormData();
+    fd.append("file", f);
+    const token = getToken();
+    const res = await fetch(`${BASE}/images`, {
+      method: "POST",
+      headers: token ? { Authorization: "Bearer " + token } : {},
+      body: fd,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const j = await res.json();
+    document.getElementById("newImageId").textContent = j.id;
+    localStorage.setItem('last_image_id', j.id);
+    await showPreview(j.id);
+  } catch (e) {
+    alert("Upload failed: " + e.message);
+  }
 });
 
+// ---------- Random import (External API with fallback) ----------
+document.getElementById("importBtn").addEventListener("click", async () => {
+  try {
+    // Backend tries Unsplash with retries; falls back to Picsum automatically
+    const j = await api("/images/import", { method: "POST" });
+    document.getElementById("importImageId").textContent = j.id;
+    localStorage.setItem('last_image_id', j.id);
+    await showPreview(j.id);
+  } catch (e) {
+    alert("Import failed: " + e.message);
+  }
+});
 
+// ---------- Preview helpers ----------
+async function showPreview(imageId) {
+  // Reveal card
+  document.getElementById("previewCard").classList.remove("d-none");
+  // Load a small server-side thumb over authorized fetch, then blob->URL
+  try {
+    const token = getToken();
+    const res = await fetch(`${BASE}/images/${imageId}/file?version=thumb`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const img = document.getElementById("previewImg");
+    img.src = url;
+    img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 10000);
+    // Wire buttons
+    document.getElementById("viewOriginalBtn").onclick = () => openImage(imageId, "original");
+    document.getElementById("optimizeBtn").onclick = () => optimizeImage(imageId);
+    // Clear status
+    document.getElementById("optimizeStatus").textContent = "";
+  } catch (e) {
+    document.getElementById("previewCard").classList.add("d-none");
+    alert("Preview failed: " + e.message);
+  }
+}
+
+async function optimizeImage(imageId) {
+  try {
+    // Default intensity; adjust if you want a heavier job
+    const j = await api("/jobs", {
+      method: "POST",
+      body: JSON.stringify({ image_id: imageId, extra_passes: 2 })
+    });
+    document.getElementById("optimizeStatus").textContent =
+      `Optimized: job_id=${j.job_id}, outputs=${(j.outputs||[]).length}. Visit "My Images" to view variants and download.`;
+  } catch (e) {
+    alert("Optimize failed: " + e.message);
+  }
+}
+
+// Reuse existing helper from images page
+async function openImage(id, version) {
+  const token = getToken();
+  if (!token) return window.location.href = "/login";
+  const res = await fetch(`${BASE}/images/${id}/file?version=${encodeURIComponent(version)}`, {
+    headers: { Authorization: "Bearer " + token }
+  });
+  if (!res.ok) return alert(`Open failed: ${res.status} ${res.statusText}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
 </script>
 {% endblock %}

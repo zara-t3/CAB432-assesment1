@@ -9,8 +9,9 @@
     rel="stylesheet"
     integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
     crossorigin="anonymous" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mystyle.css') }}">
   <style>
-    body { padding-top: 4.5rem; }
+    body { padding-top: 7rem; }
     code { background:#f7f7f7; padding:2px 6px; border-radius:6px; }
   </style>
   {% block head_extra %}{% endblock %}
@@ -32,8 +33,10 @@
           <span class="navbar-text text-truncate" style="max-width:240px;">
             <small>Token: <code id="tokenPreview">—</code></small>
           </span>
-          <a class="btn btn-outline-light btn-sm" href="/login">Login</a>
-          <button class="btn btn-warning btn-sm" id="logoutBtn" type="button">Logout</button>
+          <div class="d-flex align-items-center gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="/login">Login</a>
+            <button class="btn btn-primary btn-sm" id="logoutBtn" type="button">Logout</button>
+            </div>
         </div>
       </div>
     </div>
