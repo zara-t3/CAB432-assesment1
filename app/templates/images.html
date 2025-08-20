@@ -2,171 +2,161 @@
 {% block content %}
   <h1 class="h4 mb-3">My Images</h1>
 
-  <div class="d-flex flex-wrap gap-2 mb-3">
-    <button id="refreshBtn" class="btn btn-outline-secondary">Refresh</button>
-
-    <div class="input-group input-group-sm" style="width: 180px;">
-      <span class="input-group-text">limit</span>
-      <input id="imgLimit" type="number" class="form-control" value="10" min="1" />
-    </div>
-
-    <div class="input-group input-group-sm" style="width: 180px;">
-      <span class="input-group-text">offset</span>
-      <input id="imgOffset" type="number" class="form-control" value="0" min="0" />
+  <div class="card">
+    <div class="card-body table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th scope="col">Thumbnail</th>
+            <th scope="col">Name</th>
+            <th scope="col">ID</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Created</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="imagesTableBody">
+          <!-- rows injected by JS -->
+        </tbody>
+      </table>
     </div>
   </div>
-
-  <div id="imagesTableWrap"></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// ---------- UI helpers ----------
-function kb(n){ return n ? Math.round(n/1024) : 0; }
-function fmtDate(s){ return s ? s.replace('T',' ').slice(0,19) : ''; }
+// Load list, render rows, then load thumbnails with auth
+async function loadImages() {
+  try {
+    const j = await api("/images");
+    const body = document.getElementById("imagesTableBody");
+    body.innerHTML = "";
 
-// Renders one row. We include buttons for view, download and a variants dropdown.
-function imgRow(i, index) {
-  const created   = fmtDate(i.created_at);
-  const processed = i.processed_path ? '<span class="badge bg-success">processed</span>' : '';
-  const variants  = (i.variants || []);
-  const dropId    = `variantsMenu-${index}`;
+    j.items.forEach(i => {
+      const tr = document.createElement("tr");
 
-  // Build variants dropdown items (if any)
-  const variantItems = variants.length
-    ? variants.map(v => `
-      <li>
-        <button class="dropdown-item"
-                onclick="openVariant('${i.id}', '${v.name}')">
-          ${v.name} <span class="text-muted">(${kb(v.size_bytes)} KB)</span>
-        </button>
-      </li>`).join("")
-    : `<li><span class="dropdown-item-text text-muted">No variants</span></li>`;
+      // Thumbnail cell (placeholder <img>, we fill src after auth fetch)
+      const tdThumb = document.createElement("td");
+      tdThumb.style.width = "120px";
+      tdThumb.innerHTML = `
+        <div class="ratio ratio-1x1" style="max-width:96px;">
+          <img id="thumb_${i.id}" alt="thumb" class="rounded border" style="object-fit:cover;">
+        </div>`;
+      tr.appendChild(tdThumb);
 
-  // Variants dropdown button (only shown if variants exist)
-  const variantsBtn = `
-    <div class="btn-group">
-      <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
-              data-bs-toggle="dropdown" aria-expanded="false">
-        Variants
-      </button>
-      <ul class="dropdown-menu dropdown-menu-end" id="${dropId}">
-        ${variantItems}
-      </ul>
-    </div>`;
+      // Name
+      const tdName = document.createElement("td");
+      tdName.textContent = i.name || "—";
+      tr.appendChild(tdName);
 
-  return `<tr>
-    <td class="text-truncate" style="max-width:260px;"><code>${i.id}</code></td>
-    <td>${i.owner}</td>
-    <td>${created}</td>
-    <td>${processed}</td>
-    <td class="d-flex flex-wrap gap-2">
-      <button class="btn btn-link p-0" onclick="openImage('${i.id}','original')">View original</button>
-      ${i.processed_path ? `
-        <span class="text-muted">|</span>
-        <button class="btn btn-link p-0" onclick="openImage('${i.id}','processed')">View processed</button>
-        <span class="text-muted">|</span>
-        <button class="btn btn-link p-0" onclick="downloadProcessed('${i.id}')">Download</button>
-        <span class="text-muted">|</span>
-        ${variantsBtn}
-      ` : ''}
-      <span class="text-muted">|</span>
-      <a class="link-primary" href="/jobs" onclick="localStorage.setItem('last_image_id','${i.id}')">
-        use for job
-      </a>
-    </td>
-  </tr>`;
+      // ID
+      const tdId = document.createElement("td");
+      tdId.textContent = i.id;
+      tr.appendChild(tdId);
+
+      // Owner
+      const tdOwner = document.createElement("td");
+      tdOwner.textContent = i.owner;
+      tr.appendChild(tdOwner);
+
+      // Created
+      const tdCreated = document.createElement("td");
+      tdCreated.textContent = new Date(i.created_at).toLocaleString();
+      tr.appendChild(tdCreated);
+
+      // Actions
+      const tdActions = document.createElement("td");
+
+      const viewBtn = document.createElement("button");
+      viewBtn.className = "btn btn-sm btn-link";
+      viewBtn.textContent = "View original";
+      viewBtn.onclick = () => openImage(i.id, "original");
+      tdActions.appendChild(viewBtn);
+
+      if (i.processed_path) {
+        const viewProc = document.createElement("button");
+        viewProc.className = "btn btn-sm btn-link ms-2";
+        viewProc.textContent = "View processed";
+        viewProc.onclick = () => openImage(i.id, "processed");
+        tdActions.appendChild(viewProc);
+
+        const dlBtn = document.createElement("button");
+        dlBtn.className = "btn btn-sm btn-outline-secondary ms-2";
+        dlBtn.textContent = "Download processed";
+        dlBtn.onclick = () => downloadImage(i.id, "processed");
+        tdActions.appendChild(dlBtn);
+      } else {
+        const blurBtn = document.createElement("button");
+        blurBtn.className = "btn btn-sm btn-primary ms-2";
+        blurBtn.textContent = "Blur face/s";
+        blurBtn.onclick = () => goBlur(i.id);
+        tdActions.appendChild(blurBtn);
+      }
+
+      tr.appendChild(tdActions);
+      body.appendChild(tr);
+    });
+
+    // After rows exist, fetch thumbnails with Authorization
+    await loadThumbs(j.items.map(x => x.id));
+  } catch (e) {
+    alert("Failed to load images: " + e.message);
+  }
 }
 
-// ---------- Network helpers (use token header) ----------
+async function loadThumbs(ids) {
+  const token = getToken();
+  if (!token) return;
+  for (const id of ids) {
+    try {
+      const res = await fetch(`${BASE}/images/${id}/file?version=thumb`, {
+        headers: { Authorization: "Bearer " + token }
+      });
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const img = document.getElementById(`thumb_${id}`);
+      if (img) {
+        img.src = url;
+        img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+    } catch (_) { /* ignore per-thumb failure */ }
+  }
+}
+
 async function openImage(id, version) {
   const token = getToken();
   if (!token) return window.location.href = "/login";
-
-  const res = await fetch(`${BASE}/images/${id}/file?version=${encodeURIComponent(version)}`, {
+  const res = await fetch(`${BASE}/images/${id}/file?version=${version}`, {
     headers: { Authorization: "Bearer " + token }
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) return alert(`Open failed: ${res.status} ${res.statusText}`);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank");
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-async function downloadProcessed(id) {
-  try {
-    const token = getToken();
-    if (!token) return window.location.href = "/login";
-
-    const res = await fetch(`${BASE}/images/${id}/file?version=processed&download=1`, {
-      headers: { Authorization: "Bearer " + token }
-    });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-
-    const cd = res.headers.get("Content-Disposition");
-    const suggested = (cd && cd.split("filename=").pop()?.replace(/(^"|"$)/g,"")) || `processed_${id}.jpg`;
-
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = suggested;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    alert("Download failed: " + e.message);
-  }
+async function downloadImage(id, version) {
+  const token = getToken();
+  const res = await fetch(`${BASE}/images/${id}/file?version=${version}&download=1`, {
+    headers: { Authorization: "Bearer " + token }
+  });
+  if (!res.ok) return alert(`Download failed: ${res.status} ${res.statusText}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${id}_${version}.jpg`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-async function openVariant(id, name) {
-  try {
-    const token = getToken();
-    if (!token) return window.location.href = "/login";
-
-    const res = await fetch(`${BASE}/images/${id}/file?variant=${encodeURIComponent(name)}`, {
-      headers: { Authorization: "Bearer " + token }
-    });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  } catch (e) {
-    alert("Open variant failed: " + e.message);
-  }
+function goBlur(id) {
+  localStorage.setItem("last_image_id", id);
+  window.location.href = "/jobs";
 }
 
-// ---------- Table loader ----------
-async function loadImages() {
-  try {
-    const token = getToken();
-    if (!token) return window.location.href = "/login";
-
-    const limit  = Number(document.getElementById("imgLimit").value) || 10;
-    const offset = Number(document.getElementById("imgOffset").value) || 0;
-
-    const j = await api(`/images?limit=${limit}&offset=${offset}`);
-    const rows = j.items.map((img, idx) => imgRow(img, idx)).join("");
-
-    document.getElementById("imagesTableWrap").innerHTML =
-      `<div class="text-muted mb-2">total: ${j.total}</div>
-       <div class="table-responsive">
-         <table class="table table-striped table-sm align-middle">
-           <thead>
-             <tr><th>ID</th><th>Owner</th><th>Created</th><th>Status</th><th>Actions</th></tr>
-           </thead>
-           <tbody>${rows}</tbody>
-         </table>
-       </div>`;
-  } catch (e) {
-    alert("Load images failed: " + e.message);
-  }
-}
-
-document.getElementById("refreshBtn").addEventListener("click", loadImages);
-loadImages();
+document.addEventListener("DOMContentLoaded", loadImages);
 </script>
 {% endblock %}

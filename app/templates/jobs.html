@@ -1,23 +1,42 @@
 {% extends "template.html" %}
 {% block content %}
-  <h1 class="h4 mb-3">Jobs</h1>
+  <h1 class="h4 mb-3">Face Blur Jobs</h1>
 
   <div class="card mb-3">
     <div class="card-body">
-      <div class="row g-2 align-items-end">
+      <div class="row g-3 align-items-end">
+        <!-- Image picker (by name) -->
         <div class="col-12 col-md-6">
-          <label class="form-label">image_id</label>
-          <input id="jobImageId" class="form-control" placeholder="paste or choose from Images page" />
+          <label class="form-label">Choose image</label>
+          <select id="imageSelect" class="form-select">
+            <option value="">Loading images…</option>
+          </select>
+          <div class="form-text">
+            Selected ID: <code id="jobImageIdText">—</code>
+          </div>
         </div>
+
         <div class="col-6 col-md-3">
           <label class="form-label">Intensity (extra passes)</label>
-          <input id="extraPasses" type="number" class="form-control" min="0" value="0" />
+          <input id="extraPasses" type="range" min="0" max="12" step="1" class="form-range" value="2"
+                 oninput="document.getElementById('intensityVal').textContent=this.value">
+          <div class="text-muted small">extra_passes = <code id="intensityVal">2</code></div>
         </div>
-        <div class="col-6 col-md-3 d-grid">
-          <button id="runBtn" class="btn btn-dark">Optimize for Web</button>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Blur strength</label>
+          <input id="blurStrength" type="range" min="6" max="24" step="2" class="form-range" value="12"
+                 oninput="document.getElementById('blurVal').textContent=this.value">
+          <div class="text-muted small">sigma ≈ <code id="blurVal">12</code></div>
         </div>
+
+        <div class="col-12 col-md-3 d-grid">
+          <button id="runBtn" class="btn btn-dark">Blur faces</button>
+        </div>
+        <div class="col-12 col-md-3 d-grid">
+          <button id="refreshImagesBtn" class="btn btn-outline-secondary">Refresh images</button>
+        </div>
+
         <div class="col-12">
-          <div class="text-muted small mt-2">Generates: 160/320 thumbs, 720p, 1080p, 4K (if applicable) in JPG + WEBP.</div>
           <div id="jobResult" class="text-muted mt-2"></div>
         </div>
       </div>
@@ -25,7 +44,7 @@
   </div>
 
   <div class="d-flex flex-wrap gap-2 mb-2">
-    <button id="refreshJobsBtn" class="btn btn-outline-secondary">Refresh</button>
+    <button id="refreshJobsBtn" class="btn btn-outline-secondary">Refresh jobs</button>
     <div class="input-group input-group-sm" style="width: 180px;">
       <span class="input-group-text">limit</span>
       <input id="jobLimit" type="number" class="form-control" value="10" min="1" />
@@ -35,60 +54,109 @@
       <input id="jobOffset" type="number" class="form-control" value="0" min="0" />
     </div>
   </div>
+
   <div id="jobsTableWrap"></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function fillFromImagesPage(){
-  const last = localStorage.getItem("last_image_id");
-  if (last) document.getElementById("jobImageId").value = last;
+let imagesById = {}; // { id: {id, name, owner, created_at, processed_path} }
+
+function setSelected(id) {
+  const sel = document.getElementById("imageSelect");
+  if (!id) { document.getElementById("jobImageIdText").textContent = "—"; return; }
+  for (const opt of sel.options) {
+    if (opt.value === id) { sel.value = id; break; }
+  }
+  document.getElementById("jobImageIdText").textContent = id;
 }
-function jobRow(j){
-  const created = j.created_at ? j.created_at.replace('T',' ').slice(0,19) : '';
-  const out = (j.outputs||[]).map(o => o.name).join(", ");
-  return `<tr>
-    <td><code>${j.id}</code></td>
-    <td>${j.owner}</td>
-    <td><code>${j.image_id}</code></td>
-    <td>${j.preset}</td>
-    <td>${j.status}</td>
-    <td>${j.duration_ms ?? ""}</td>
-    <td>${out}</td>
-    <td>${created}</td>
-  </tr>`;
+
+async function loadImagesIntoSelect() {
+  try {
+    const j = await api("/images?limit=200&offset=0&sort=created_at&order=desc");
+    imagesById = {};
+    const sel = document.getElementById("imageSelect");
+    sel.innerHTML = ""; // clear
+    if (!j.items || j.items.length === 0) {
+      sel.innerHTML = `<option value="">No images yet</option>`;
+      document.getElementById("jobImageIdText").textContent = "—";
+      return;
+    }
+    j.items.forEach(i => { imagesById[i.id] = i; });
+    // Build options: "name (id)"
+    j.items.forEach(i => {
+      const opt = document.createElement("option");
+      opt.value = i.id;
+      opt.textContent = `${i.name || "Untitled"} (${i.id})`;
+      sel.appendChild(opt);
+    });
+
+    // Prefer last_image_id if present
+    const last = localStorage.getItem("last_image_id");
+    setSelected(last || j.items[0].id);
+  } catch (e) {
+    alert("Failed to load images: " + e.message);
+  }
 }
+
+document.getElementById("imageSelect").addEventListener("change", (e) => {
+  setSelected(e.target.value);
+});
+
 async function createJob(){
-  const image_id = document.getElementById("jobImageId").value.trim();
+  const image_id = document.getElementById("imageSelect").value;
   const extra    = Number(document.getElementById("extraPasses").value) || 0;
-  if (!image_id) return alert("Provide an image_id");
+  const blur     = Number(document.getElementById("blurStrength").value) || 12;
+  if (!image_id) return alert("Choose an image first");
   try{
-    const j = await api("/jobs", { method:"POST", body: JSON.stringify({ image_id, extra_passes: extra }) });
+    const j = await api("/jobs", { method:"POST", body: JSON.stringify({
+      image_id, extra_passes: extra, blur_strength: blur
+    })});
     document.getElementById("jobResult").textContent =
-      `job_id=${j.job_id}, status=${j.status}, duration_ms=${j.duration_ms}, outputs=${(j.outputs||[]).length}`;
+      `job_id=${j.job_id}, status=${j.status}, duration_ms=${j.duration_ms}`;
     await loadJobs();
   }catch(e){ alert("Create job failed: "+e.message); }
 }
+
+function jobRow(j){
+  const created = j.created_at ? j.created_at.replace('T',' ').slice(0,19) : '';
+  const name = imagesById[j.image_id]?.name || "—";
+  return `<tr>
+    <td><code>${j.id}</code></td>
+    <td>${name} <div class="text-muted small"><code>${j.image_id}</code></div></td>
+    <td>${j.status}</td>
+    <td>${j.duration_ms ?? ""}</td>
+    <td>${created}</td>
+  </tr>`;
+}
+
 async function loadJobs(){
   try{
     const limit  = Number(document.getElementById("jobLimit").value) || 10;
     const offset = Number(document.getElementById("jobOffset").value) || 0;
-    const j = await api(`/jobs?limit=${limit}&offset=${offset}`);
+    const j = await api(`/jobs?limit=${limit}&offset=${offset}&sort=created_at&order=desc`);
     document.getElementById("jobsTableWrap").innerHTML =
       `<div class="text-muted mb-2">total: ${j.total}</div>
        <div class="table-responsive">
          <table class="table table-striped table-sm">
            <thead><tr>
-             <th>ID</th><th>Owner</th><th>Image</th><th>Preset</th>
-             <th>Status</th><th>Duration (ms)</th><th>Outputs</th><th>Created</th>
+             <th>ID</th><th>Image (name & ID)</th><th>Status</th>
+             <th>Duration (ms)</th><th>Created</th>
            </tr></thead>
            <tbody>${j.items.map(jobRow).join("")}</tbody>
          </table>
        </div>`;
   }catch(e){ alert("Load jobs failed: "+e.message); }
 }
+
 document.getElementById("runBtn").addEventListener("click", createJob);
 document.getElementById("refreshJobsBtn").addEventListener("click", loadJobs);
-fillFromImagesPage(); loadJobs();
+document.getElementById("refreshImagesBtn").addEventListener("click", loadImagesIntoSelect);
+
+// Initial load
+(async function init(){
+  await loadImagesIntoSelect();
+  await loadJobs();
+})();
 </script>
 {% endblock %}

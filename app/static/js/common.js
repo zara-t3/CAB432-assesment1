@@ -2,14 +2,15 @@ const BASE = "/api/v1";
 const $ = (sel) => document.querySelector(sel);
 
 function setToken(t) {
+  // store (no UI preview)
   localStorage.setItem("imagelab_token", t || "");
-  const el = $("#tokenPreview");
-  if (el) el.textContent = t ? t.slice(0, 18) + "…" : "—";
 }
+
 function getToken() {
   return localStorage.getItem("imagelab_token") || "";
 }
-setToken(getToken()); // update navbar token preview on load
+
+
 
 const logoutBtn = $("#logoutBtn");
 if (logoutBtn) {
@@ -22,10 +23,12 @@ if (logoutBtn) {
 
 async function api(path, opts = {}) {
   const headers = new Headers(opts.headers || {});
+  // Only set JSON content type when not sending FormData
   if (!(opts.body instanceof FormData)) headers.set("Content-Type", "application/json");
   headers.set("Accept", "application/json");
+
   const token = getToken();
-  if (token) headers.set("Authorization", "Bearer " + token);
+  if (token) headers.set("Authorization", "Bearer " + token); // ✅ keep this
 
   const res = await fetch(BASE + path, { ...opts, headers });
   const isJson = res.headers.get("content-type")?.includes("application/json");
