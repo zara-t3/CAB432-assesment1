@@ -2,7 +2,6 @@
 {% block content %}
   <h1 class="h4 mb-3">Upload</h1>
 
-  <!-- Local upload -->
   <div class="card mb-3">
     <div class="card-header">Upload local file</div>
     <div class="card-body">
@@ -23,7 +22,7 @@
     </div>
   </div>
 
-  <!-- Preview card (appears after upload) -->
+  
   <div id="previewCard" class="card d-none">
     <div class="card-body">
       <div class="d-flex align-items-start gap-3">
@@ -46,7 +45,7 @@
 
 {% block scripts %}
 <script>
-// ---------- Upload ----------
+
 document.getElementById("uploadBtn").addEventListener("click", async () => {
   const name = document.getElementById("nameInput").value.trim();
   const file = document.getElementById("fileInput").files[0];
@@ -69,7 +68,6 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
   }
 });
 
-// ---------- Preview helpers ----------
 async function showPreview(imageId) {
   const card = document.getElementById("previewCard");
   const status = document.getElementById("previewStatus");
@@ -90,7 +88,7 @@ async function showPreview(imageId) {
     img.src = url;
     img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 10000);
 
-    // Wire buttons
+    
     document.getElementById("viewOriginalBtn").onclick = () => openImage(imageId, "original");
     document.getElementById("blurBtn").onclick = () => blurImage(imageId);
     status.textContent = "";
@@ -112,8 +110,6 @@ async function blurImage(imageId) {
     alert("Face blur failed: " + e.message);
   }
 }
-
-// Open helper (authorized)
 async function openImage(id, version) {
   const token = getToken();
   if (!token) return window.location.href = "/login";
