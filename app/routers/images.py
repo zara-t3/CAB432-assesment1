@@ -39,7 +39,7 @@ def list_images():
         items = [i for i in items if i["owner"] == g.user["username"]]
     total = len(items)
 
-    # sanitize output: only expose relevant fields
+
     clean_items = [
         {
             "id": i["id"],
@@ -103,3 +103,21 @@ def get_file(img_id):
         download_name=os.path.basename(path)
     )
 
+@images_bp.get("/<img_id>/metadata")
+@auth_required
+def get_metadata(img_id):
+    rec = IMAGES.get(img_id)
+    if not rec or (g.user["role"] != "admin" and rec["owner"] != g.user["username"]):
+        return jsonify({"error": "not found"}), 404
+    
+    base_dir = os.path.dirname(rec["orig_path"])
+    metadata_path = os.path.join(base_dir, "processing_metadata.json")
+    
+    if not os.path.exists(metadata_path):
+        return jsonify({"error": "metadata not available"}), 404
+    
+    import json
+    with open(metadata_path, 'r') as f:
+        metadata = json.load(f)
+    
+    return jsonify(metadata)

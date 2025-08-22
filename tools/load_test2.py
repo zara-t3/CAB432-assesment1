@@ -2,16 +2,16 @@
 import requests, json, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-BASE = "http://ec2-16-176-230-218.ap-southeast-2.compute.amazonaws.com:8080/api/v1"
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3NTU4NDA4MjF9.bLKC1DBysjUcXpQHUrWKDV75UI6y_iAicKPt0cxuhDE"
-IMAGE_ID = "c1c92407-74cb-426e-a4ca-693ae369e957"
+BASE = "http://ec2-52-63-222-67.ap-southeast-2.compute.amazonaws.com:8080/api/v1"
+TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3NTU5MTM0MTV9.DxeVoe5EGm20qvwD7Nxz4aRFPTeHfLiHyAWY5gNW4Jw"
+IMAGE_ID = "3af4f7cc-f332-410c-926b-a8178f6eab1f"
 
-CONCURRENCY = 5      # try 3–5 on small instances
+CONCURRENCY = 4
 TOTAL_JOBS  = 100    # total jobs across all threads
 TIMEOUT_S   = 600
 
 headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
-payload = {"image_id": IMAGE_ID, "extra_passes": 4, "blur_strength": 20}
+payload = {"image_id": IMAGE_ID, "extra_passes": 9, "blur_strength": 20}
 
 def one_job(idx):
     t0 = time.time()

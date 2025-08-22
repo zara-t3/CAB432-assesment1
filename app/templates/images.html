@@ -21,6 +21,30 @@
       </table>
     </div>
   </div>
+
+  <!-- Metadata Modal -->
+  <div class="modal fade" id="metadataModal" tabindex="-1" aria-labelledby="metadataModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="metadataModalLabel" style="color: var(--chocolate-brown);">Processing Metadata</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="metadataContent">
+            <div class="text-center">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
@@ -66,33 +90,62 @@ async function loadImages() {
 
       // Actions
       const tdActions = document.createElement("td");
+      tdActions.style.minWidth = "300px";
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "d-flex flex-column gap-1";
+
+      // First row of buttons
+      const topRow = document.createElement("div");
+      topRow.className = "d-flex gap-1";
 
       const viewBtn = document.createElement("button");
-      viewBtn.className = "btn btn-sm btn-link";
+      viewBtn.className = "btn btn-sm btn-link p-1";
+      viewBtn.style.fontSize = "0.75rem";
       viewBtn.textContent = "View original";
       viewBtn.onclick = () => openImage(i.id, "original");
-      tdActions.appendChild(viewBtn);
+      topRow.appendChild(viewBtn);
 
       if (i.processed_path) {
         const viewProc = document.createElement("button");
-        viewProc.className = "btn btn-sm btn-link ms-2";
+        viewProc.className = "btn btn-sm btn-link p-1";
+        viewProc.style.fontSize = "0.75rem";
         viewProc.textContent = "View processed";
         viewProc.onclick = () => openImage(i.id, "processed");
-        tdActions.appendChild(viewProc);
+        topRow.appendChild(viewProc);
+
+        actionsDiv.appendChild(topRow);
+
+        // Second row of buttons
+        const bottomRow = document.createElement("div");
+        bottomRow.className = "d-flex gap-1";
 
         const dlBtn = document.createElement("button");
-        dlBtn.className = "btn btn-sm btn-outline-secondary ms-2";
-        dlBtn.textContent = "Download processed";
+        dlBtn.className = "btn btn-sm btn-outline-secondary p-1";
+        dlBtn.style.fontSize = "0.75rem";
+        dlBtn.textContent = "Download";
         dlBtn.onclick = () => downloadImage(i.id, "processed");
-        tdActions.appendChild(dlBtn);
+        bottomRow.appendChild(dlBtn);
+
+        const metaBtn = document.createElement("button");
+        metaBtn.className = "btn btn-sm btn-outline-secondary p-1";
+        metaBtn.style.fontSize = "0.75rem";
+        metaBtn.textContent = "Metadata";
+        metaBtn.onclick = () => showMetadata(i.id);
+        bottomRow.appendChild(metaBtn);
+
+        actionsDiv.appendChild(bottomRow);
       } else {
         const blurBtn = document.createElement("button");
-        blurBtn.className = "btn btn-sm btn-primary ms-2";
-        blurBtn.textContent = "Blur face/s";
+        blurBtn.className = "btn btn-sm btn-primary p-1";
+        blurBtn.style.fontSize = "0.75rem";
+        blurBtn.textContent = "Blur faces";
         blurBtn.onclick = () => goBlur(i.id);
-        tdActions.appendChild(blurBtn);
+        topRow.appendChild(blurBtn);
+        actionsDiv.appendChild(topRow);
       }
 
+      tdActions.appendChild(actionsDiv);
       tr.appendChild(tdActions);
       body.appendChild(tr);
     });
@@ -150,6 +203,60 @@ async function downloadImage(id, version) {
   a.download = `${id}_${version}.jpg`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+async function showMetadata(imageId) {
+  // Show modal immediately with loading spinner
+  const modal = new bootstrap.Modal(document.getElementById('metadataModal'));
+  modal.show();
+  
+  try {
+    const metadata = await api(`/images/${imageId}/metadata`);
+    
+    // Create formatted metadata display
+    const content = document.getElementById('metadataContent');
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title mb-3" style="color: var(--chocolate-brown);">Processing Summary</h6>
+          <div class="row g-2">
+            <div class="col-sm-6">
+              <span style="color: var(--chocolate-brown); font-size: 0.875rem;">Faces Detected:</span>
+              <span style="color: black;" class="ms-1">${metadata.faces_detected}</span>
+            </div>
+            <div class="col-sm-6">
+              <span style="color: var(--chocolate-brown); font-size: 0.875rem;">Blur Strength:</span>
+              <span style="color: black;" class="ms-1">${metadata.blur_strength}</span>
+            </div>
+            <div class="col-sm-6">
+              <span style="color: var(--chocolate-brown); font-size: 0.875rem;">Extra Passes:</span>
+              <span style="color: black;" class="ms-1">${metadata.extra_passes}</span>
+            </div>
+            <div class="col-sm-6">
+              <span style="color: var(--chocolate-brown); font-size: 0.875rem;">Original Size:</span>
+              <span style="color: black;" class="ms-1">${metadata.original_size[0]} × ${metadata.original_size[1]}</span>
+            </div>
+            <div class="col-sm-6">
+              <span style="color: var(--chocolate-brown); font-size: 0.875rem;">Processing Time:</span>
+              <span style="color: black;" class="ms-1">${new Date(metadata.processing_time * 1000).toLocaleString()}</span>
+            </div>
+            <div class="col-sm-6">
+              <span style="color: var(--chocolate-brown); font-size: 0.875rem;">Image Dimensions:</span>
+              <span style="color: black;" class="ms-1">${metadata.original_size[0]} × ${metadata.original_size[1]} pixels</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+  } catch (e) {
+    const content = document.getElementById('metadataContent');
+    content.innerHTML = `
+      <div class="alert" role="alert">
+        <strong>Metadata not available</strong><br>
+        <small class="text-muted">${e.message}</small>
+      </div>
+    `;
+  }
 }
 
 function goBlur(id) {

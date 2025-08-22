@@ -9,9 +9,9 @@ services:
     container_name: imagelab
     environment:
       JWT_SECRET: "${JWT_SECRET}"
-      DATA_DIR: "${DATA_DIR}"
+      DATA_DIR: "/data"
     volumes:
-      - ./data:${DATA_DIR}
+      - ./data/data
     ports:
       - "${HOST_PORT}:${APP_PORT}"  
     restart: unless-stopped
