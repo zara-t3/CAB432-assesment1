@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   app:
-    image: imagelab:faceblur
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11544309-a1-repo:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,7 +11,7 @@ services:
       JWT_SECRET: "${JWT_SECRET}"
       DATA_DIR: "/data"
     volumes:
-      - ./data/data
+      - ./data:/data
     ports:
       - "${HOST_PORT}:${APP_PORT}"  
     restart: unless-stopped

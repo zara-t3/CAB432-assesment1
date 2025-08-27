@@ -1,29 +1,31 @@
-import asyncio, aiohttp, json, time
+# tools/simple_load_concurrent.py
+import requests, json, time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# --- hardcoded config ---
-BASE = "http://ec2-13-239-254-23.ap-southeast-2.compute.amazonaws.com:8080/api/v1"
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3NTU5MDg3MTF9.zkQhMOXe_NXEED0RWY42s5DpKNkYGsZAAccH_gkyGuI" 
-IMAGE_ID = "d1e59d6d-be2a-4dd0-a3db-9ba2b91bd184"
+BASE = "http://ec2-52-63-222-67.ap-southeast-2.compute.amazonaws.com:8080/api/v1"
+TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3NTU5MTM0MTV9.DxeVoe5EGm20qvwD7Nxz4aRFPTeHfLiHyAWY5gNW4Jw"
+IMAGE_ID = "3af4f7cc-f332-410c-926b-a8178f6eab1f"
 
-CONCURRENCY = 25   # number of concurrent requests per batch
-REPEAT = 100         # how many times to repeat the batch
+CONCURRENCY = 4
+TOTAL_JOBS  = 100    
+TIMEOUT_S   = 600
 
-async def one(session):
-    payload = {"image_id": IMAGE_ID, "extra_passes": 3, "blur_strength": 16}
-    async with session.post(f"{BASE}/jobs", data=json.dumps(payload)) as r:
-        if r.status != 200:
-            print("bad:", r.status, await r.text())
+headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
+payload = {"image_id": IMAGE_ID, "extra_passes": 9, "blur_strength": 20}
 
-async def run_batch(session):
-    await asyncio.gather(*[one(session) for _ in range(CONCURRENCY)])
+def one_job(idx):
+    t0 = time.time()
+    r = requests.post(f"{BASE}/jobs", data=json.dumps(payload), headers=headers, timeout=TIMEOUT_S)
+    dt = round((time.time()-t0)*1000)
+    return idx, r.status_code, dt
 
-async def main():
-    headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
-    async with aiohttp.ClientSession(headers=headers) as s:
-        for i in range(REPEAT):
-            t0 = time.time()
-            await run_batch(s)
-            print(f"round {i+1}/{REPEAT} done in {round(time.time()-t0,2)} s")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+t0 = time.time()
+ok = bad = 0
+with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
+    futs = [ex.submit(one_job, i+1) for i in range(TOTAL_JOBS)]
+    for fut in as_completed(futs):
+        i, status, dt = fut.result()
+        if status == 200: ok += 1
+        else: bad += 1
+        print(f"job {i}/{TOTAL_JOBS} -> {status} in {dt}ms")
+print(f"done {ok} ok, {bad} bad in {round(time.time()-t0,2)}s")

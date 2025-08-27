@@ -11,7 +11,6 @@ function getToken() {
 }
 
 
-
 const logoutBtn = $("#logoutBtn");
 if (logoutBtn) {
   logoutBtn.addEventListener("click", () => {
