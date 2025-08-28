@@ -2,9 +2,9 @@
 import requests, json, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-BASE = "http://ec2-52-63-222-67.ap-southeast-2.compute.amazonaws.com:8080/api/v1"
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3NTU5MTM0MTV9.DxeVoe5EGm20qvwD7Nxz4aRFPTeHfLiHyAWY5gNW4Jw"
-IMAGE_ID = "3af4f7cc-f332-410c-926b-a8178f6eab1f"
+BASE = ""
+TOKEN = ""
+IMAGE_ID = ""
 
 CONCURRENCY = 4
 TOTAL_JOBS  = 100    
