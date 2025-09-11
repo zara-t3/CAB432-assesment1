@@ -1,17 +1,16 @@
-# tools/simple_load_concurrent.py
 import requests, json, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-BASE = ""
-TOKEN = ""
-IMAGE_ID = ""
+BASE = "http://ec2-52-62-70-139.ap-southeast-2.compute.amazonaws.com:8080/api/v1"
+TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3NTY2MDc1NDl9.Bme8j64tjsHAUK9DTUbt6KOCemy5jP2uJ3f4AErtelI"
+IMAGE_ID = "624f854a-6b89-41c7-ac8b-cbd5e3eccd88"
 
-CONCURRENCY = 4
-TOTAL_JOBS  = 100    
+CONCURRENCY = 2
+TOTAL_JOBS  = 1000
 TIMEOUT_S   = 600
 
 headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
-payload = {"image_id": IMAGE_ID, "extra_passes": 9, "blur_strength": 20}
+payload = {"image_id": IMAGE_ID, "extra_passes": 4, "blur_strength": 22}
 
 def one_job(idx):
     t0 = time.time()
