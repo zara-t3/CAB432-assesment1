@@ -7,3 +7,4 @@ requests==2.*
 mtcnn==0.1.1
 tensorflow-cpu==2.15.*
 opencv-python==4.10.*
+boto3==1.35.*
