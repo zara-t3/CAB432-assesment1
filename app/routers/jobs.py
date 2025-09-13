@@ -1,9 +1,9 @@
-# app/routers/jobs.py - Updated with DynamoDB
-import os, uuid, time
+import os, uuid, time, tempfile
 from datetime import datetime
 from flask import Blueprint, request, jsonify, g, current_app
 from ..auth import auth_required
 from ..services.dynamodb_service import get_db_service
+from ..services.s3_service import get_s3_service
 from ..services.processing import face_blur_and_variants
 
 jobs_bp = Blueprint("jobs", __name__)
@@ -11,7 +11,7 @@ jobs_bp = Blueprint("jobs", __name__)
 @jobs_bp.post("")
 @auth_required
 def create_job():
-    """Create and execute face blur job - now uses DynamoDB"""
+    """Create and execute face blur job with S3 storage"""
     data = request.get_json(force=True, silent=True) or {}
     img_id = data.get("image_id")
     extra_passes = int(data.get("extra_passes", 0))
@@ -22,20 +22,19 @@ def create_job():
 
     try:
         db = get_db_service()
+        s3 = get_s3_service()
         
-        # CHANGE: Get image from DynamoDB instead of IMAGES.get()
+        # Get image record from DynamoDB
         rec = db.get_image(img_id)
-        
         if not rec:
             return jsonify({"error": "image not found"}), 404
             
-        # Check ownership
         if g.user["role"] != "admin" and rec["owner"] != g.user["username"]:
             return jsonify({"error": "image not found"}), 404
 
         job_id = str(uuid.uuid4())
         
-        #CHANGE: Create job record in DynamoDB first
+        # Create job record in DynamoDB
         job_record = db.create_job_record(
             job_id=job_id,
             owner=rec["owner"],
@@ -44,39 +43,64 @@ def create_job():
             blur_strength=blur_strength
         )
         
-        print(f"Starting face blur job: {job_id}")
+        print(f"Starting face blur job with S3: {job_id}")
         start = time.time()
 
-        # Process the image (same logic as before)
-        out_dir = os.path.dirname(rec["orig_path"])
-        outputs = face_blur_and_variants(
-            rec["orig_path"], 
-            out_dir, 
-            blur_strength=blur_strength,
-            extra_passes=extra_passes
-        )
+        # Download image from S3 to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_input:
+            image_data = s3.download_image(rec["s3_key"])
+            temp_input.write(image_data)
+            temp_input_path = temp_input.name
 
-        # Find the best processed image (same logic)
-        rep = next((v for v in outputs if v["name"] == "fhd_1080.webp"), None) \
-              or next((v for v in outputs if v["name"] == "fhd_1080.jpg"), None) \
-              or (outputs[0] if outputs else None)
-        
+        try:
+            # Create temporary output directory
+            with tempfile.TemporaryDirectory() as temp_output_dir:
+                # Process the image using existing function
+                outputs = face_blur_and_variants(
+                    temp_input_path, 
+                    temp_output_dir, 
+                    blur_strength=blur_strength,
+                    extra_passes=extra_passes
+                )
+
+                # Upload processed files to S3
+                processed_s3_keys = []
+                for output in outputs:
+                    s3_key = s3.upload_processed_image(
+                        output['path'], 
+                        rec['owner'], 
+                        img_id, 
+                        output['name']
+                    )
+                    processed_s3_keys.append({
+                        'name': output['name'],
+                        's3_key': s3_key
+                    })
+                
+                # Update image record with primary processed S3 key
+                primary_processed = next(
+                    (item for item in processed_s3_keys if item['name'] == "fhd_1080.webp"), 
+                    processed_s3_keys[0] if processed_s3_keys else None
+                )
+                
+                if primary_processed:
+                    db.update_processed_s3_key(img_id, primary_processed['s3_key'])
+
+        finally:
+            # Clean up temporary input file
+            os.unlink(temp_input_path)
+
         duration_ms = int((time.time() - start) * 1000)
 
-        # CHANGE: Update both job completion AND image processed path in DynamoDB
-        if rep:
-            # Update image record with processed path
-            db.update_image_processed_path(img_id, rep["path"])
-            
         # Update job completion
         db.update_job_completion(
             job_id=job_id,
             duration_ms=duration_ms,
-            outputs=outputs,
+            outputs=processed_s3_keys,
             status="done"
         )
 
-        print(f"✅ Face blur job completed: {job_id} in {duration_ms}ms")
+        print(f"Face blur job completed with S3: {job_id} in {duration_ms}ms")
         
         return jsonify({
             "job_id": job_id,
@@ -101,14 +125,13 @@ def create_job():
 @jobs_bp.get("")
 @auth_required
 def list_jobs():
-    """List jobs - now reads from DynamoDB"""
+    """List jobs from DynamoDB"""
     limit = int(request.args.get("limit", 20))
     offset = int(request.args.get("offset", 0))
-    owner = request.args.get("owner")  # For admin filtering
+    owner = request.args.get("owner")
     
     try:
         db = get_db_service()
-        
         
         if g.user["role"] == "admin":
             if owner:
@@ -118,11 +141,10 @@ def list_jobs():
         else:
             items = db.list_jobs_for_user(g.user["username"], limit=limit + offset)
         
-        # Apply offset (simple pagination)
         total = len(items)
         paginated_items = items[offset:offset+limit]
         
-        print(f"✅ Listed {len(paginated_items)} jobs from DynamoDB")
+        print(f"Listed {len(paginated_items)} jobs from DynamoDB")
         
         return jsonify({
             "total": total,

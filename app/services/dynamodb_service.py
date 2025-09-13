@@ -1,4 +1,3 @@
-# app/services/dynamodb_service.py 
 import boto3
 import os
 from datetime import datetime
@@ -8,6 +7,7 @@ import uuid
 
 class DynamoDBService:
     def __init__(self):
+        # CHANGE TO YOUR STUDENT NUMBER
         self.qut_username = "n11544309@qut.edu.au" 
         self.student_number = "n11544309" 
         
@@ -16,34 +16,34 @@ class DynamoDBService:
         self.images_table_name = f'{self.student_number}-imagelab-images'
         self.jobs_table_name = f'{self.student_number}-imagelab-jobs'
         
+        print(f"DynamoDB service initialized for {self.qut_username}")
 
-    # ========== IMAGE OPERATIONS ==========
-    
-    def create_image_record(self, image_id: str, name: str, owner: str, orig_path: str) -> Dict:
-        """Create image record following QUT DynamoDB pattern"""
+    def create_image_record(self, image_id: str, name: str, owner: str, s3_key: str) -> Dict:
+        """Create image record with S3 key"""
         try:
             response = self.dynamodb.put_item(
                 TableName=self.images_table_name,
                 Item={
-                    "qut-username": {"S": self.qut_username},  # Partition key (required)
-                    "image_id": {"S": image_id},  # Sort key
+                    "qut-username": {"S": self.qut_username},
+                    "image_id": {"S": image_id},
                     "name": {"S": name},
                     "owner": {"S": owner},
-                    "orig_path": {"S": orig_path},
-                    "processed_path": {"S": ""},  # Empty string instead of None
+                    "s3_key": {"S": s3_key},
+                    "processed_s3_key": {"S": ""},
+                    "thumb_s3_key": {"S": ""},
                     "created_at": {"S": datetime.utcnow().isoformat()},
                     "status": {"S": "uploaded"}
                 }
             )
-            print(f"Created image record: {image_id}")
+            print(f"Created image record with S3: {image_id}")
             
-            # Return in same format as before for compatibility
             return {
                 'id': image_id,
                 'name': name,
                 'owner': owner,
-                'orig_path': orig_path,
-                'processed_path': None,
+                's3_key': s3_key,
+                'processed_s3_key': None,
+                'thumb_s3_key': None,
                 'created_at': datetime.utcnow().isoformat(),
                 'status': 'uploaded'
             }
@@ -52,7 +52,7 @@ class DynamoDBService:
             raise Exception(f"Failed to create image record: {e}")
 
     def get_image(self, image_id: str) -> Optional[Dict]:
-        """Get single image following QUT pattern"""
+        """Get single image with S3 keys"""
         try:
             response = self.dynamodb.get_item(
                 TableName=self.images_table_name,
@@ -66,13 +66,13 @@ class DynamoDBService:
             if not item:
                 return None
                 
-            # Convert DynamoDB format back to app format
             result = {
                 'id': item['image_id']['S'],
                 'name': item['name']['S'],
                 'owner': item['owner']['S'],
-                'orig_path': item['orig_path']['S'],
-                'processed_path': item['processed_path']['S'] if item['processed_path']['S'] else None,
+                's3_key': item.get('s3_key', {}).get('S', ''),
+                'processed_s3_key': item.get('processed_s3_key', {}).get('S', '') or None,
+                'thumb_s3_key': item.get('thumb_s3_key', {}).get('S', '') or None,
                 'created_at': item['created_at']['S'],
                 'status': item['status']['S']
             }
@@ -84,12 +84,14 @@ class DynamoDBService:
             return None
 
     def list_images_for_user(self, owner: str, limit: int = 20) -> List[Dict]:
-        """List images for user using QUT query pattern"""
+        """List images for user with S3 keys"""
         try:
-           
             response = self.dynamodb.query(
                 TableName=self.images_table_name,
-                KeyConditionExpression="qut-username = :username",
+                KeyConditionExpression="#pk = :username",
+                ExpressionAttributeNames={
+                    "#pk": "qut-username"
+                },
                 ExpressionAttributeValues={
                     ":username": {"S": self.qut_username}
                 },
@@ -98,22 +100,12 @@ class DynamoDBService:
             
             items = response.get('Items', [])
             
-            # Convert and filter by owner
             results = []
             for item in items:
                 if item['owner']['S'] == owner:
-                    result = {
-                        'id': item['image_id']['S'],
-                        'name': item['name']['S'],
-                        'owner': item['owner']['S'],
-                        'orig_path': item['orig_path']['S'],
-                        'processed_path': item['processed_path']['S'] if item['processed_path']['S'] else None,
-                        'created_at': item['created_at']['S'],
-                        'status': item['status']['S']
-                    }
+                    result = self._convert_item_to_dict(item)
                     results.append(result)
             
-            # Sort by created_at descending
             results.sort(key=lambda x: x['created_at'], reverse=True)
             print(f"Found {len(results)} images for user {owner}")
             return results
@@ -123,11 +115,14 @@ class DynamoDBService:
             return []
 
     def list_all_images(self, limit: int = 20) -> List[Dict]:
-        """List all images for admin users"""
+        """List all images with S3 keys"""
         try:
             response = self.dynamodb.query(
                 TableName=self.images_table_name,
-                KeyConditionExpression="qut-username = :username",
+                KeyConditionExpression="#pk = :username",
+                ExpressionAttributeNames={
+                    "#pk": "qut-username"
+                },
                 ExpressionAttributeValues={
                     ":username": {"S": self.qut_username}
                 },
@@ -136,21 +131,11 @@ class DynamoDBService:
             
             items = response.get('Items', [])
             
-            # Convert format
             results = []
             for item in items:
-                result = {
-                    'id': item['image_id']['S'],
-                    'name': item['name']['S'],
-                    'owner': item['owner']['S'],
-                    'orig_path': item['orig_path']['S'],
-                    'processed_path': item['processed_path']['S'] if item['processed_path']['S'] else None,
-                    'created_at': item['created_at']['S'],
-                    'status': item['status']['S']
-                }
+                result = self._convert_item_to_dict(item)
                 results.append(result)
             
-            # Sort by created_at descending
             results.sort(key=lambda x: x['created_at'], reverse=True)
             print(f"Found {len(results)} total images")
             return results
@@ -159,8 +144,8 @@ class DynamoDBService:
             print(f"Failed to list all images: {e}")
             return []
 
-    def update_image_processed_path(self, image_id: str, processed_path: str):
-        """Update processed path following QUT pattern"""
+    def update_processed_s3_key(self, image_id: str, processed_s3_key: str):
+        """Update processed S3 key"""
         try:
             self.dynamodb.update_item(
                 TableName=self.images_table_name,
@@ -168,27 +153,57 @@ class DynamoDBService:
                     "qut-username": {"S": self.qut_username},
                     "image_id": {"S": image_id}
                 },
-                UpdateExpression="SET processed_path = :path",
+                UpdateExpression="SET processed_s3_key = :key",
                 ExpressionAttributeValues={
-                    ":path": {"S": processed_path}
+                    ":key": {"S": processed_s3_key}
                 }
             )
-            print(f"Updated processed path for {image_id}")
+            print(f"Updated processed S3 key for {image_id}")
         except ClientError as e:
-            print(f"Failed to update processed path: {e}")
+            print(f"Failed to update processed S3 key: {e}")
             raise
 
-    # ========== JOB OPERATIONS ==========
+    def update_thumb_s3_key(self, image_id: str, thumb_s3_key: str):
+        """Update thumbnail S3 key"""
+        try:
+            self.dynamodb.update_item(
+                TableName=self.images_table_name,
+                Key={
+                    "qut-username": {"S": self.qut_username},
+                    "image_id": {"S": image_id}
+                },
+                UpdateExpression="SET thumb_s3_key = :key",
+                ExpressionAttributeValues={
+                    ":key": {"S": thumb_s3_key}
+                }
+            )
+            print(f"Updated thumbnail S3 key for {image_id}")
+        except ClientError as e:
+            print(f"Failed to update thumbnail S3 key: {e}")
+            raise
 
+    def _convert_item_to_dict(self, item: Dict) -> Dict:
+        """Convert DynamoDB item to app format"""
+        return {
+            'id': item['image_id']['S'],
+            'name': item['name']['S'],
+            'owner': item['owner']['S'],
+            's3_key': item.get('s3_key', {}).get('S', ''),
+            'processed_s3_key': item.get('processed_s3_key', {}).get('S', '') or None,
+            'thumb_s3_key': item.get('thumb_s3_key', {}).get('S', '') or None,
+            'created_at': item['created_at']['S'],
+            'status': item['status']['S']
+        }
+
+    # Job operations (same as before but keeping for completeness)
     def create_job_record(self, job_id: str, owner: str, image_id: str, 
                          extra_passes: int, blur_strength: int = 12) -> Dict:
-        """Create job record following QUT pattern"""
         try:
             response = self.dynamodb.put_item(
                 TableName=self.jobs_table_name,
                 Item={
-                    "qut-username": {"S": self.qut_username},  # Partition key
-                    "job_id": {"S": job_id},  # Sort key
+                    "qut-username": {"S": self.qut_username},
+                    "job_id": {"S": job_id},
                     "owner": {"S": owner},
                     "image_id": {"S": image_id},
                     "extra_passes": {"N": str(extra_passes)},
@@ -200,7 +215,6 @@ class DynamoDBService:
             )
             print(f"Created job record: {job_id}")
             
-            # Return in app format
             return {
                 'id': job_id,
                 'owner': owner,
@@ -217,7 +231,6 @@ class DynamoDBService:
             raise Exception(f"Failed to create job record: {e}")
 
     def update_job_completion(self, job_id: str, duration_ms: int, outputs: List[Dict], status: str = 'done'):
-        """Update job completion following QUT pattern"""
         try:
             self.dynamodb.update_item(
                 TableName=self.jobs_table_name,
@@ -227,7 +240,7 @@ class DynamoDBService:
                 },
                 UpdateExpression="SET #status = :status, duration_ms = :duration",
                 ExpressionAttributeNames={
-                    "#status": "status"  # status is a reserved word
+                    "#status": "status"
                 },
                 ExpressionAttributeValues={
                     ":status": {"S": status},
@@ -240,11 +253,13 @@ class DynamoDBService:
             raise
 
     def list_jobs_for_user(self, owner: str, limit: int = 20) -> List[Dict]:
-        """List jobs for user following QUT pattern"""
         try:
             response = self.dynamodb.query(
                 TableName=self.jobs_table_name,
-                KeyConditionExpression="qut-username = :username",
+                KeyConditionExpression="#pk = :username",
+                ExpressionAttributeNames={
+                    "#pk": "qut-username"
+                },
                 ExpressionAttributeValues={
                     ":username": {"S": self.qut_username}
                 },
@@ -253,7 +268,6 @@ class DynamoDBService:
             
             items = response.get('Items', [])
             
-            # Convert and filter by owner
             results = []
             for item in items:
                 if item['owner']['S'] == owner:
@@ -269,7 +283,6 @@ class DynamoDBService:
                     }
                     results.append(result)
             
-            # Sort by created_at descending
             results.sort(key=lambda x: x['created_at'], reverse=True)
             print(f"Found {len(results)} jobs for user {owner}")
             return results
@@ -279,11 +292,13 @@ class DynamoDBService:
             return []
 
     def list_all_jobs(self, limit: int = 20) -> List[Dict]:
-        """List all jobs for admin users"""
         try:
             response = self.dynamodb.query(
                 TableName=self.jobs_table_name,
-                KeyConditionExpression="qut-username = :username",
+                KeyConditionExpression="#pk = :username",
+                ExpressionAttributeNames={
+                    "#pk": "qut-username"
+                },
                 ExpressionAttributeValues={
                     ":username": {"S": self.qut_username}
                 },
@@ -292,7 +307,6 @@ class DynamoDBService:
             
             items = response.get('Items', [])
             
-            # Convert format
             results = []
             for item in items:
                 result = {
@@ -307,7 +321,6 @@ class DynamoDBService:
                 }
                 results.append(result)
             
-            # Sort by created_at descending
             results.sort(key=lambda x: x['created_at'], reverse=True)
             print(f"Found {len(results)} total jobs")
             return results
@@ -316,11 +329,11 @@ class DynamoDBService:
             print(f"Failed to list all jobs: {e}")
             return []
 
-# Create global instance
+# Global instance
 db_service = None
 
 def get_db_service() -> DynamoDBService:
-    """Get database service instance - singleton pattern"""
+    """Get database service instance"""
     global db_service
     if db_service is None:
         db_service = DynamoDBService()

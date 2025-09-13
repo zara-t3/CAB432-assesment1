@@ -10,6 +10,8 @@ services:
     environment:
       JWT_SECRET: "${JWT_SECRET}"
       DATA_DIR: "/data"
+      QUT_USERNAME: "${QUT_USERNAME}"
+      STUDENT_NUMBER: "${STUDENT_NUMBER}"
     volumes:
       - ./data:/data
     ports:
