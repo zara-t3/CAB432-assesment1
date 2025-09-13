@@ -5,7 +5,6 @@ from botocore.exceptions import ClientError
 def create_tables():
     """Create DynamoDB tables following QUT CAB432 requirements"""
     
-    # CHANGE THESE TO YOUR DETAILS
     QUT_USERNAME = "n11544309@qut.edu.au"  
     STUDENT_NUMBER = "n11544309"  
     
@@ -17,22 +16,21 @@ def create_tables():
     
     print(f"Creating DynamoDB tables for {QUT_USERNAME}...")
     print(f"Tables: {images_table_name}, {jobs_table_name}")
-    
-    # ===== Create Images Table =====
+  
     try:
         print(f"Creating {images_table_name}...")
         
         response = dynamodb.create_table(
             TableName=images_table_name,
             AttributeDefinitions=[
-                {"AttributeName": "qut-username", "AttributeType": "S"},  # Required partition key
-                {"AttributeName": "image_id", "AttributeType": "S"},      # Sort key
+                {"AttributeName": "qut-username", "AttributeType": "S"},  
+                {"AttributeName": "image_id", "AttributeType": "S"},      
             ],
             KeySchema=[
-                {"AttributeName": "qut-username", "KeyType": "HASH"},   # Partition key
-                {"AttributeName": "image_id", "KeyType": "RANGE"},      # Sort key  
+                {"AttributeName": "qut-username", "KeyType": "HASH"},   
+                {"AttributeName": "image_id", "KeyType": "RANGE"},      
             ],
-            ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1}  # QUT requirement
+            ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1}  
         )
         
         print("Waiting for images table to be active...")
@@ -47,21 +45,20 @@ def create_tables():
             print(f"ERROR: Error creating images table: {e}")
             return False
     
-    # ===== Create Jobs Table =====
     try:
         print(f"Creating {jobs_table_name}...")
         
         response = dynamodb.create_table(
             TableName=jobs_table_name,
             AttributeDefinitions=[
-                {"AttributeName": "qut-username", "AttributeType": "S"},  # Required partition key
-                {"AttributeName": "job_id", "AttributeType": "S"},        # Sort key
+                {"AttributeName": "qut-username", "AttributeType": "S"},  
+                {"AttributeName": "job_id", "AttributeType": "S"},       
             ],
             KeySchema=[
-                {"AttributeName": "qut-username", "KeyType": "HASH"},   # Partition key
-                {"AttributeName": "job_id", "KeyType": "RANGE"},        # Sort key
+                {"AttributeName": "qut-username", "KeyType": "HASH"},   
+                {"AttributeName": "job_id", "KeyType": "RANGE"},        
             ],
-            ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1}  # QUT requirement
+            ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1}  
         )
         
         print("Waiting for jobs table to be active...")

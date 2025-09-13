@@ -9,30 +9,56 @@ import io
 
 class S3Service:
     def __init__(self):
-        # CHANGE TO YOUR STUDENT NUMBER
         self.student_number = "n11544309"
         self.qut_username = "n11544309@qut.edu.au"
         
-        # S3 client
+      
         self.s3_client = boto3.client('s3', region_name='ap-southeast-2')
         
-        # Bucket name following QUT pattern
         self.bucket_name = f'{self.student_number}-imagelab-bucket'
         
         print(f"S3 Service initialized for bucket: {self.bucket_name}")
     
-    def create_bucket_if_not_exists(self):
-        """Create S3 bucket with required QUT tags"""
+    def configure_cors(self):
+        """Configure CORS policy for direct browser uploads"""
+        cors_configuration = {
+            'CORSRules': [
+                {
+                    'AllowedHeaders': ['*'],
+                    'AllowedMethods': ['GET', 'POST', 'PUT'],
+                    'AllowedOrigins': ['*'],  
+                    'ExposeHeaders': ['ETag'],
+                    'MaxAgeSeconds': 3000
+                }
+            ]
+        }
+        
         try:
-            # Check if bucket exists
+            self.s3_client.put_bucket_cors(
+                Bucket=self.bucket_name,
+                CORSConfiguration=cors_configuration
+            )
+            print(f"Configured CORS for bucket: {self.bucket_name}")
+            return True
+        except ClientError as e:
+            print(f"Failed to configure CORS: {e}")
+            return False
+    
+    def create_bucket_if_not_exists(self):
+        """Create S3 bucket with required QUT tags and CORS"""
+        try:
+            
             self.s3_client.head_bucket(Bucket=self.bucket_name)
             print(f"Bucket {self.bucket_name} already exists")
+            
+            
+            self.configure_cors()
             return True
             
         except ClientError as e:
             error_code = e.response['Error']['Code']
             if error_code == '404':
-                # Bucket doesn't exist, create it
+                
                 try:
                     response = self.s3_client.create_bucket(
                         Bucket=self.bucket_name,
@@ -40,7 +66,6 @@ class S3Service:
                     )
                     print(f"Created bucket: {self.bucket_name}")
                     
-                    # Add required QUT tags
                     self.s3_client.put_bucket_tagging(
                         Bucket=self.bucket_name,
                         Tagging={
@@ -51,6 +76,10 @@ class S3Service:
                         }
                     )
                     print("Added QUT tags to bucket")
+                    
+                  
+                    self.configure_cors()
+                    
                     return True
                     
                 except ClientError as create_error:
@@ -63,10 +92,10 @@ class S3Service:
     def upload_image(self, file_obj: BinaryIO, user: str, image_id: str, filename: str = "original.jpg") -> str:
         """Upload image file to S3 and return S3 key"""
         try:
-            # Create S3 key (path) for the image
+            
             s3_key = f"images/{user}/{image_id}/{filename}"
             
-            # Upload file to S3
+          
             self.s3_client.upload_fileobj(
                 file_obj,
                 self.bucket_name,
@@ -139,8 +168,14 @@ class S3Service:
             raise Exception(f"Pre-signed URL generation failed: {e}")
     
     def generate_presigned_upload_url(self, s3_key: str, content_type: str = 'image/jpeg', expiration: int = 3600) -> Dict:
-        """Generate pre-signed URL for direct client upload"""
+        """Generate pre-signed URL for direct client upload with proper conditions"""
         try:
+            conditions = [
+                {'Content-Type': content_type},
+                ['content-length-range', 1, 10 * 1024 * 1024],
+                {'key': s3_key}
+            ]
+            
             fields = {
                 'Content-Type': content_type
             }
@@ -149,14 +184,17 @@ class S3Service:
                 Bucket=self.bucket_name,
                 Key=s3_key,
                 Fields=fields,
-                Conditions=[
-                    {'Content-Type': content_type},
-                    ['content-length-range', 1, 10 * 1024 * 1024]  # 1 byte to 10MB
-                ],
+                Conditions=conditions,
                 ExpiresIn=expiration
             )
             
-            return response
+            print(f"Generated pre-signed upload URL for: {s3_key}")
+            
+            return {
+                'url': response['url'],
+                'fields': response['fields'],
+                'expires_in': expiration
+            }
             
         except ClientError as e:
             print(f"Failed to generate pre-signed upload URL: {e}")
@@ -165,19 +203,16 @@ class S3Service:
     def create_thumbnail(self, s3_key: str, user: str, image_id: str, size: tuple = (160, 160)) -> str:
         """Download image, create thumbnail, upload back to S3"""
         try:
-            # Download original image
+            
             image_data = self.download_image(s3_key)
             
-            # Create thumbnail
             with Image.open(io.BytesIO(image_data)) as img:
                 img.thumbnail(size, Image.Resampling.LANCZOS)
                 
-                # Save thumbnail to bytes
                 thumb_io = io.BytesIO()
                 img.save(thumb_io, format='JPEG', quality=80, optimize=True)
                 thumb_io.seek(0)
-                
-                # Upload thumbnail to S3
+            
                 thumb_s3_key = f"images/{user}/{image_id}/thumb_160.jpg"
                 self.s3_client.upload_fileobj(
                     thumb_io,
@@ -203,6 +238,16 @@ class S3Service:
             print(f"Failed to delete from S3: {e}")
             raise Exception(f"S3 delete failed: {e}")
     
+    def verify_object_exists(self, s3_key: str) -> bool:
+        """Verify that an object exists in S3"""
+        try:
+            self.s3_client.head_object(Bucket=self.bucket_name, Key=s3_key)
+            return True
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                return False
+            raise Exception(f"Error checking S3 object: {e}")
+    
     def _get_content_type(self, filename: str) -> str:
         """Get content type based on file extension"""
         ext = filename.lower().split('.')[-1]
@@ -215,7 +260,6 @@ class S3Service:
         }
         return content_types.get(ext, 'application/octet-stream')
 
-# Global instance
 s3_service = None
 
 def get_s3_service() -> S3Service:

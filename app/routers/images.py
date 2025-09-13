@@ -196,3 +196,112 @@ def get_metadata(img_id):
     except Exception as e:
         print(f"Failed to get metadata: {e}")
         return jsonify({"error": "Failed to get metadata"}), 500
+    
+
+@images_bp.post("/presigned-upload")
+@auth_required
+def get_presigned_upload():
+    """Generate pre-signed URL for direct client upload to S3"""
+    try:
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        content_type = data.get("content_type", "image/jpeg")
+        
+        if not name:
+            return jsonify({"error": "missing name"}), 400
+        
+      
+        img_id = str(uuid.uuid4())
+        user = g.user["username"]
+        
+        # Create S3 key for the upload
+        s3_key = f"images/{user}/{img_id}/original.jpg"
+        
+        # Generate pre-signed upload URL
+        s3 = get_s3_service()
+        presigned_data = s3.generate_presigned_upload_url(
+            s3_key=s3_key,
+            content_type=content_type,
+            expiration=3600 
+        )
+        
+        print(f"Generated pre-signed upload URL for: {img_id}")
+        
+        return jsonify({
+            "image_id": img_id,
+            "name": name,
+            "s3_key": s3_key,
+            "presigned_upload": presigned_data,
+            "expires_in": 3600
+        })
+        
+    except Exception as e:
+        print(f"Failed to generate pre-signed upload URL: {e}")
+        return jsonify({"error": f"Failed to generate upload URL: {str(e)}"}), 500
+
+@images_bp.post("/<img_id>/confirm-upload")
+@auth_required
+def confirm_upload(img_id):
+    """Confirm successful upload and create DynamoDB record"""
+    try:
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        s3_key = data.get("s3_key", "").strip()
+        
+        if not name or not s3_key:
+            return jsonify({"error": "missing name or s3_key"}), 400
+        
+        user = g.user["username"]
+        
+      
+        s3 = get_s3_service()
+        try:
+            # get object metadata to verify it exists
+            s3.s3_client.head_object(Bucket=s3.bucket_name, Key=s3_key)
+        except Exception as e:
+            return jsonify({"error": "Upload not found in S3"}), 400
+        
+        db = get_db_service()
+        image_record = db.create_image_record(
+            image_id=img_id,
+            name=name,
+            owner=user,
+            s3_key=s3_key
+        )
+        
+        print(f"Confirmed upload and created DynamoDB record: {img_id}")
+        
+        return jsonify({
+            "id": img_id,
+            "name": name,
+            "status": "uploaded",
+            "message": "Upload confirmed successfully"
+        })
+        
+    except Exception as e:
+        print(f"Failed to confirm upload: {e}")
+        return jsonify({"error": f"Failed to confirm upload: {str(e)}"}), 500
+
+@images_bp.get("/upload-methods")
+@auth_required
+def get_upload_methods():
+    """List available upload methods for client"""
+    return jsonify({
+        "methods": [
+            {
+                "name": "server_upload",
+                "description": "Upload through server (traditional)",
+                "endpoint": "POST /api/v1/images",
+                "method": "multipart/form-data"
+            },
+            {
+                "name": "presigned_upload", 
+                "description": "Direct upload to S3 using pre-signed URL",
+                "steps": [
+                    "1. POST /api/v1/images/presigned-upload to get upload URL",
+                    "2. POST directly to S3 using the pre-signed URL",
+                    "3. POST /api/v1/images/{id}/confirm-upload to finalize"
+                ]
+            }
+        ]
+    })

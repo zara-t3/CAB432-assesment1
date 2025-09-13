@@ -41,6 +41,10 @@ def create_app():
     @app.get("/jobs")
     def page_jobs():
         return render_template("jobs.html", title="Jobs")
+    
+    @app.get("/presigned-test")
+    def page_presigned_test():
+        return render_template("presigned_upload.html", title="Direct S3 Upload Test")
 
     # --- Register blueprints (NOTE the prefixes)
     app.register_blueprint(auth_bp,   url_prefix="/api/v1/auth")

@@ -26,7 +26,7 @@ def face_blur_and_variants(
     det = _get_detector()
 
     
-    img_np = np.asarray(base)  # shape=(H,W,3), dtype=uint8
+    img_np = np.asarray(base)  
     results = det.detect_faces(img_np)
 
     work = base.copy()
@@ -46,7 +46,7 @@ def face_blur_and_variants(
     # Save output files and create metadata
     outputs = []
     
-    # Save FHD 1080p WEBP version
+  
     fhd_webp_path = os.path.join(out_dir, "fhd_1080.webp")
     fhd_work = work.copy()
     if max(W, H) > 1080:
@@ -56,12 +56,11 @@ def face_blur_and_variants(
     fhd_work.save(fhd_webp_path, "WEBP", quality=85, optimize=True)
     outputs.append({"name": "fhd_1080.webp", "path": fhd_webp_path})
     
-    # Save FHD 1080p JPG version
+ 
     fhd_jpg_path = os.path.join(out_dir, "fhd_1080.jpg")
     fhd_work.save(fhd_jpg_path, "JPEG", quality=85, optimize=True)
     outputs.append({"name": "fhd_1080.jpg", "path": fhd_jpg_path})
-    
-    # Save processing metadata
+   
     metadata = {
         "faces_detected": len(results),
         "blur_strength": blur_strength,
