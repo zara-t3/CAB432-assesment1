@@ -11,8 +11,7 @@ def create_tables():
     
    
     dynamodb = boto3.client('dynamodb', region_name='ap-southeast-2')
-    
-    # Table names following QUT pattern
+ 
     images_table_name = f'{STUDENT_NUMBER}-imagelab-images'
     jobs_table_name = f'{STUDENT_NUMBER}-imagelab-jobs'
     

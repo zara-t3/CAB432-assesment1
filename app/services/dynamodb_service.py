@@ -86,7 +86,7 @@ class DynamoDBService:
     def list_images_for_user(self, owner: str, limit: int = 20) -> List[Dict]:
         """List images for user using QUT query pattern"""
         try:
-            # Query all images for this QUT user, then filter by owner
+           
             response = self.dynamodb.query(
                 TableName=self.images_table_name,
                 KeyConditionExpression="qut-username = :username",
