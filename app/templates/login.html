@@ -1,40 +1,224 @@
 {% extends "template.html" %}
 {% block content %}
   <h1 class="h4 mb-3">Login</h1>
-  <div class="card">
-    <div class="card-body">
-      <div class="row g-2 align-items-center">
-        <div class="col-12 col-md-3">
-          <label class="form-label">Username</label>
-          <input id="username" class="form-control" value="" />
+  
+  <!-- Login Form -->
+  <div id="loginSection">
+    <div class="card">
+      <div class="card-body">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-3">
+            <label class="form-label">Username</label>
+            <input id="username" class="form-control" value="" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Password</label>
+            <input id="password" class="form-control" type="password" value="" />
+          </div>
+          <div class="col-12 col-md-2 d-grid">
+            <label class="form-label invisible">.</label>
+            <button id="loginBtn" class="btn btn-primary">Login</button>
+          </div>
         </div>
-        <div class="col-12 col-md-3">
-          <label class="form-label">Password</label>
-          <input id="password" class="form-control" type="password" value="" />
-        </div>
-        <div class="col-12 col-md-2 d-grid">
-          <label class="form-label invisible">.</label>
-          <button id="loginBtn" class="btn btn-primary">Login</button>
+        <div class="text-center mt-2">
+          <small class="text-muted">
+            Need an account? <a href="#" onclick="showSignup()">Sign up here</a>
+          </small>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Signup Form (Hidden Initially) -->
+  <div id="signupSection" class="d-none">
+    <div class="card">
+      <div class="card-body">
+        <h5>Create Account</h5>
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-md-3">
+            <label class="form-label">Username</label>
+            <input id="signupUsername" class="form-control" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Email</label>
+            <input id="signupEmail" class="form-control" type="email" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Password</label>
+            <input id="signupPassword" class="form-control" type="password" />
+            <div class="form-text">8+ chars, number, upper, lower, symbol</div>
+          </div>
+          <div class="col-12 col-md-3 d-grid">
+            <button id="signupBtn" class="btn btn-success">Sign Up</button>
+          </div>
+        </div>
+        <div class="text-center mt-2">
+          <small class="text-muted">
+            <a href="#" onclick="showLogin()">Back to login</a> | 
+            <a href="#" onclick="showConfirm()">Have confirmation code?</a>
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation Form (Hidden Initially) -->
+  <div id="confirmSection" class="d-none">
+    <div class="card">
+      <div class="card-body">
+        <h5>Confirm Email</h5>
+        <div class="alert alert-info">
+          Check your email for a 6-digit confirmation code.
+        </div>
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-md-4">
+            <label class="form-label">Username</label>
+            <input id="confirmUsername" class="form-control" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Confirmation Code</label>
+            <input id="confirmCode" class="form-control" placeholder="123456" />
+          </div>
+          <div class="col-12 col-md-4 d-grid">
+            <button id="confirmBtn" class="btn btn-warning">Confirm</button>
+          </div>
+        </div>
+        <div class="text-center mt-2">
+          <small class="text-muted">
+            <a href="#" onclick="showLogin()">Back to login</a>
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Messages -->
+  <div id="statusMessage" class="mt-3 d-none">
+    <div class="alert" id="statusAlert"></div>
+  </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-document.getElementById("loginBtn").addEventListener("click", async () => {
+// Show/Hide Functions
+function showLogin() {
+  document.getElementById('loginSection').classList.remove('d-none');
+  document.getElementById('signupSection').classList.add('d-none');
+  document.getElementById('confirmSection').classList.add('d-none');
+  hideStatus();
+}
+
+function showSignup() {
+  document.getElementById('loginSection').classList.add('d-none');
+  document.getElementById('signupSection').classList.remove('d-none');
+  document.getElementById('confirmSection').classList.add('d-none');
+  hideStatus();
+}
+
+function showConfirm() {
+  document.getElementById('loginSection').classList.add('d-none');
+  document.getElementById('signupSection').classList.add('d-none');
+  document.getElementById('confirmSection').classList.remove('d-none');
+  hideStatus();
+}
+
+function showStatus(message, isError = false) {
+  const statusDiv = document.getElementById('statusMessage');
+  const alertDiv = document.getElementById('statusAlert');
+  alertDiv.textContent = message;
+  alertDiv.className = isError ? 'alert alert-danger' : 'alert alert-success';
+  statusDiv.classList.remove('d-none');
+}
+
+function hideStatus() {
+  document.getElementById('statusMessage').classList.add('d-none');
+}
+
+// Authentication Functions
+async function handleSignup() {
+  try {
+    const username = document.getElementById('signupUsername').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value.trim();
+
+    if (!username || !email || !password) {
+      showStatus('Please fill in all fields', true);
+      return;
+    }
+
+    const data = await api('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password })
+    });
+
+    showStatus('Account created! Check your email for confirmation code.');
+    document.getElementById('confirmUsername').value = username;
+    setTimeout(() => showConfirm(), 2000);
+    
+  } catch (e) {
+    showStatus(`Signup failed: ${e.message}`, true);
+  }
+}
+
+async function handleConfirm() {
+  try {
+    const username = document.getElementById('confirmUsername').value.trim();
+    const confirmation_code = document.getElementById('confirmCode').value.trim();
+
+    if (!username || !confirmation_code) {
+      showStatus('Please fill in all fields', true);
+      return;
+    }
+
+    await api('/auth/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ username, confirmation_code })
+    });
+
+    showStatus('Email confirmed! You can now login.');
+    document.getElementById('username').value = username;
+    setTimeout(() => showLogin(), 2000);
+    
+  } catch (e) {
+    showStatus(`Confirmation failed: ${e.message}`, true);
+  }
+}
+
+async function handleLogin() {
   try {
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
+
+    if (!username || !password) {
+      showStatus('Please enter username and password', true);
+      return;
+    }
+
     const data = await api("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
+
     setToken(data.access_token);
-    window.location.href = "/upload";
+    showStatus('Login successful! Redirecting...');
+    setTimeout(() => {
+      window.location.href = "/upload";
+    }, 1000);
+    
   } catch (e) {
-    alert("Login failed: " + e.message);
+    if (e.message.includes('confirm') || e.message.includes('not confirmed')) {
+      showStatus('Please confirm your email first', true);
+      document.getElementById('confirmUsername').value = username;
+      showConfirm();
+    } else {
+      showStatus(`Login failed: ${e.message}`, true);
+    }
   }
-});
+}
+
+// Event Listeners
+document.getElementById("loginBtn").addEventListener("click", handleLogin);
+document.getElementById("signupBtn").addEventListener("click", handleSignup);
+document.getElementById("confirmBtn").addEventListener("click", handleConfirm);
 </script>
 {% endblock %}
