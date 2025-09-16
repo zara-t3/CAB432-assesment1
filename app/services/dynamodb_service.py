@@ -2,21 +2,42 @@ import boto3
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
+from flask import current_app
 from botocore.exceptions import ClientError
 import uuid
 
 class DynamoDBService:
     def __init__(self):
-        # CHANGE TO YOUR STUDENT NUMBER
         self.qut_username = "n11544309@qut.edu.au" 
         self.student_number = "n11544309" 
         
         self.dynamodb = boto3.client('dynamodb', region_name='ap-southeast-2')
+        self.dynamodb_resource = boto3.resource('dynamodb', region_name='ap-southeast-2')
         
-        self.images_table_name = f'{self.student_number}-imagelab-images'
-        self.jobs_table_name = f'{self.student_number}-imagelab-jobs'
+        # Try to get table names from Parameter Store via Flask config, fallback to original
+        try:
+            self.images_table_name = current_app.config.get('DYNAMODB_IMAGES_TABLE')
+            self.jobs_table_name = current_app.config.get('DYNAMODB_JOBS_TABLE')
+            if self.images_table_name and self.jobs_table_name:
+                source = "Parameter Store" if current_app.config.get('PARAMETER_STORE_ENABLED') else "Environment Variables"
+                print(f"DynamoDB using tables from {source}:")
+                print(f"   Images: {self.images_table_name}")
+                print(f"   Jobs: {self.jobs_table_name}")
+            else:
+                self.images_table_name = f'{self.student_number}-imagelab-images'
+                self.jobs_table_name = f'{self.student_number}-imagelab-jobs'
+                print(f"DynamoDB using default tables:")
+                print(f"   Images: {self.images_table_name}")
+                print(f"   Jobs: {self.jobs_table_name}")
+        except RuntimeError:
+            # Not in Flask context
+            self.images_table_name = f'{self.student_number}-imagelab-images'
+            self.jobs_table_name = f'{self.student_number}-imagelab-jobs'
+            print(f"DynamoDB service initialized for {self.qut_username}")
         
-        print(f"DynamoDB service initialized for {self.qut_username}")
+        # Get table references for high-level operations
+        self.images_table = self.dynamodb_resource.Table(self.images_table_name)
+        self.jobs_table = self.dynamodb_resource.Table(self.jobs_table_name)
 
     def create_image_record(self, image_id: str, name: str, owner: str, s3_key: str) -> Dict:
         """Create image record with S3 key"""
@@ -195,7 +216,7 @@ class DynamoDBService:
             'status': item['status']['S']
         }
 
-    # Job operations (same as before but keeping for completeness)
+    # Job operations
     def create_job_record(self, job_id: str, owner: str, image_id: str, 
                          extra_passes: int, blur_strength: int = 12) -> Dict:
         try:
@@ -329,6 +350,29 @@ class DynamoDBService:
             print(f"Failed to list all jobs: {e}")
             return []
 
+    # Backward compatibility methods for simplified interface
+    def store_image_metadata(self, user_id, image_id, filename, s3_key):
+        """Backward compatibility for simplified interface"""
+        try:
+            return self.create_image_record(image_id, filename, user_id, s3_key)
+        except:
+            return False
+
+    def get_user_images(self, user_id):
+        """Backward compatibility for simplified interface"""
+        return self.list_images_for_user(user_id)
+
+    def store_job_record(self, user_id, job_id, job_type, input_s3_key, status='pending'):
+        """Backward compatibility for simplified interface"""
+        try:
+            return self.create_job_record(job_id, user_id, "unknown", 0, 12)
+        except:
+            return False
+
+    def get_user_jobs(self, user_id):
+        """Backward compatibility for simplified interface"""
+        return self.list_jobs_for_user(user_id)
+
 # Global instance
 db_service = None
 
@@ -338,3 +382,9 @@ def get_db_service() -> DynamoDBService:
     if db_service is None:
         db_service = DynamoDBService()
     return db_service
+
+# Backward compatibility
+def get_dynamodb_service():
+    return get_db_service()
+
+__all__ = ['get_db_service', 'get_dynamodb_service', 'DynamoDBService']
