@@ -46,24 +46,22 @@ def create_job():
         print(f"Starting face blur job with S3: {job_id}")
         start = time.time()
 
-        # Download image from S3 to temporary file
+       
         with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_input:
             image_data = s3.download_image(rec["s3_key"])
             temp_input.write(image_data)
             temp_input_path = temp_input.name
 
         try:
-            # Create temporary output directory
+            #
             with tempfile.TemporaryDirectory() as temp_output_dir:
-                # Process the image using existing function
+               
                 outputs = face_blur_and_variants(
                     temp_input_path, 
                     temp_output_dir, 
                     blur_strength=blur_strength,
                     extra_passes=extra_passes
                 )
-
-                # Upload processed files to S3
                 processed_s3_keys = []
                 for output in outputs:
                     s3_key = s3.upload_processed_image(
@@ -77,7 +75,10 @@ def create_job():
                         's3_key': s3_key
                     })
                 
-                # Update image record with primary processed S3 key
+                metadata_file = os.path.join(temp_output_dir, "processing_metadata.json")
+                if os.path.exists(metadata_file):
+                    metadata_s3_key = s3.upload_processed_image(metadata_file, rec['owner'], img_id, "processing_metadata.json")
+           
                 primary_processed = next(
                     (item for item in processed_s3_keys if item['name'] == "fhd_1080.webp"), 
                     processed_s3_keys[0] if processed_s3_keys else None
@@ -87,12 +88,11 @@ def create_job():
                     db.update_processed_s3_key(img_id, primary_processed['s3_key'])
 
         finally:
-            # Clean up temporary input file
             os.unlink(temp_input_path)
 
         duration_ms = int((time.time() - start) * 1000)
 
-        # Update job completion
+
         db.update_job_completion(
             job_id=job_id,
             duration_ms=duration_ms,
@@ -106,13 +106,12 @@ def create_job():
             "job_id": job_id,
             "status": "done",
             "duration_ms": duration_ms,
-            "outputs": []  # Keep same API response format
+            "outputs": []  # keep same API response format
         })
         
     except Exception as e:
         print(f"Job failed: {e}")
         
-        # Try to update job status to failed
         try:
             if 'job_id' in locals():
                 db = get_db_service()

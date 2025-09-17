@@ -2,11 +2,19 @@ import boto3
 import hmac, hashlib, base64
 import os
 from botocore.exceptions import ClientError
+from .secrets_manager_service import get_secret 
 
 class CognitoService:
     def __init__(self):
         self.client_id = os.getenv('COGNITO_CLIENT_ID')
-        self.client_secret = os.getenv('COGNITO_CLIENT_SECRET')
+        
+        self.client_secret = get_secret('cognito_client_secret')
+        if not self.client_secret:
+            print("WARNING: Could not retrieve Cognito client secret from Secrets Manager")
+            self.client_secret = os.getenv('COGNITO_CLIENT_SECRET', '')
+            
+        print(f"Cognito service initialized with secret from Secrets Manager: {'✓' if self.client_secret else '✗'}")
+        
         self.cognito_client = boto3.client("cognito-idp", region_name="ap-southeast-2")
 
     def secret_hash(self, username):

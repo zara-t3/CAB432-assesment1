@@ -179,17 +179,39 @@ def get_metadata(img_id):
         if g.user["role"] != "admin" and rec["owner"] != g.user["username"]:
             return jsonify({"error": "not found"}), 404
         
-        # Return basic metadata from DynamoDB
+        # Default metadata
         metadata = {
             "image_id": rec["id"],
             "name": rec["name"],
             "owner": rec["owner"],
             "created_at": rec["created_at"],
             "status": rec["status"],
-            "s3_key": rec["s3_key"],
-            "has_processed": bool(rec["processed_s3_key"]),
-            "has_thumbnail": bool(rec["thumb_s3_key"])
+            "faces_detected": 0,
+            "blur_strength": 12,
+            "extra_passes": 0,
+            "original_size": [1920, 1080],
+            "processing_time": rec["created_at"]
         }
+        
+        # Try to get actual processing metadata from S3
+        if rec["processed_s3_key"]:
+            try:
+                s3 = get_s3_service()
+                metadata_key = f"images/{rec['owner']}/{img_id}/processed/processing_metadata.json"
+                metadata_data = s3.download_image(metadata_key)
+                import json
+                processing_metadata = json.loads(metadata_data.decode('utf-8'))
+                
+                # Update with actual values
+                metadata.update({
+                    "faces_detected": processing_metadata.get("faces_detected", 0),
+                    "blur_strength": processing_metadata.get("blur_strength", 12),
+                    "extra_passes": processing_metadata.get("extra_passes", 0),
+                    "original_size": processing_metadata.get("original_size", [1920, 1080]),
+                    "processing_time": processing_metadata.get("processing_time", rec["created_at"])
+                })
+            except Exception as e:
+                print(f"Could not fetch processing metadata from S3: {e}")
         
         return jsonify(metadata)
         

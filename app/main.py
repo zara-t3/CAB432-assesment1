@@ -1,10 +1,10 @@
-
 import os
 from flask import Flask, jsonify, render_template, redirect, url_for
 from flask_cors import CORS
 from .auth import auth_bp
 from .routers.images import images_bp
 from .routers.jobs import jobs_bp
+from .services.secrets_manager_service import get_secret 
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,7 +14,6 @@ def create_app():
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.jinja_env.auto_reload = True
     
-    # Try Parameter Store first, then fallback to environment variables
     try:
         from .services.parameter_store_service import get_app_config
         
@@ -43,30 +42,34 @@ def create_app():
         })
         
         parameter_store_enabled = False
+
+    jwt_secret = get_secret('jwt_secret', 'devsecret')
+    app.config["JWT_SECRET"] = jwt_secret
     
-    # Original configuration
-    app.config["JWT_SECRET"] = os.getenv("JWT_SECRET", "devsecret")
     app.config["DATA_DIR"] = os.getenv("DATA_DIR", "/data")
     app.config['PARAMETER_STORE_ENABLED'] = parameter_store_enabled
 
-    # Dev CORS for browser tools
+
+    cognito_secret = get_secret('cognito_client_secret')
+    app.config['SECRETS_MANAGER_ENABLED'] = bool(cognito_secret)
+
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    # --- API: health
+
     @app.get("/api/v1/ping")
     def ping():
         return jsonify({"message": "pong"})
 
-    # Configuration endpoint
+  
     @app.route("/api/v1/config")
     def get_config():
         return {
             "app_url": app.config.get('APP_URL'),
             "s3_bucket": app.config.get('S3_BUCKET_NAME'),
-            "parameter_store": "enabled" if app.config.get('PARAMETER_STORE_ENABLED') else "fallback"
+            "parameter_store": "enabled" if app.config.get('PARAMETER_STORE_ENABLED') else "fallback",
+            "secrets_manager": "enabled" if app.config.get('SECRETS_MANAGER_ENABLED') else "fallback"
         }
-
-    # --- Pages (your original routes)
+ 
     @app.get("/")
     def page_root():
         return redirect(url_for("page_login"))
@@ -91,12 +94,11 @@ def create_app():
     def page_presigned_test():
         return render_template("presigned_upload.html", title="Direct S3 Upload Test")
 
-    # --- Register blueprints (NOTE the prefixes)
+
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(images_bp, url_prefix="/api/v1/images")
     app.register_blueprint(jobs_bp, url_prefix="/api/v1/jobs")
 
-    # Debug: print routes so we can verify /api/v1/auth/login exists
     print("== URL MAP ==")
     for rule in app.url_map.iter_rules():
         print(f"{','.join(rule.methods)}  {rule.rule}")
