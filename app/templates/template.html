@@ -31,13 +31,16 @@
           <li class="nav-item"><a class="nav-link" href="/profile">Profile</a></li> 
         </ul>
         <div class="d-flex gap-2">
-          <span class="navbar-text text-truncate" style="max-width:240px;">
-          
-          </span>
-          <div class="d-flex align-items-center gap-2">
-            <a class="btn btn-outline-secondary btn-sm" href="/login">Login</a>
-            <button class="btn btn-primary btn-sm" id="logoutBtn" type="button">Logout</button>
+          <div id="authSection" class="d-flex align-items-center gap-2">
+            <!-- Login button (shown when not authenticated) -->
+            <a id="loginBtn" class="btn btn-outline-secondary btn-sm d-none" href="/login">Login</a>
+
+            <!-- Profile section (shown when authenticated) -->
+            <div id="profileSection" class="d-flex align-items-center gap-2 d-none">
+              <a class="btn btn-outline-secondary btn-sm" href="/profile">Profile</a>
+              <button class="btn btn-primary btn-sm" id="logoutBtn" type="button">Logout</button>
             </div>
+          </div>
         </div>
       </div>
     </div>

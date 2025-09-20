@@ -27,7 +27,7 @@
             <input id="password" class="form-control" type="password" value="" />
           </div>
           <div class="col-12 col-md-4 d-flex align-items-end">
-            <button id="loginBtn" class="btn btn-primary w-100">Login</button>
+            <button id="loginFormBtn" type="button" class="btn btn-primary w-100" onclick="handleLogin()">Login</button>
           </div>
         </div>
         <div class="text-center mt-2">
@@ -336,16 +336,18 @@ async function handleConfirm() {
 }
 
 async function handleLogin() {
+  console.log('handleLogin function called'); // Debug
   try {
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
+    console.log('Username:', username, 'Password length:', password.length); // Debug
 
     if (!username || !password) {
       showStatus('Please enter username and password', true);
       return;
     }
 
-    const loginBtn = document.getElementById('loginBtn');
+    const loginBtn = document.getElementById('loginFormBtn');
     const originalText = loginBtn.textContent;
     loginBtn.textContent = 'Sending email...';
     loginBtn.disabled = true;
@@ -358,10 +360,13 @@ async function handleLogin() {
     loginBtn.textContent = originalText;
     loginBtn.disabled = false;
 
+    console.log('Login response:', data); // Debug logging
+
     if (data.challenge_required) {
       showMfa(data.session, data.username, data.message);
     } else {
-      // direct login success - this shouldnt happen
+      // direct login success - this shouldnt happen with MFA enabled
+      console.log('Direct login success - MFA may not be configured properly');
       setToken(data.access_token);
       showStatus('Login successful! Redirecting...');
       setTimeout(() => {
@@ -370,7 +375,7 @@ async function handleLogin() {
     }
     
   } catch (e) {
-    const loginBtn = document.getElementById('loginBtn');
+    const loginBtn = document.getElementById('loginFormBtn');
     loginBtn.textContent = 'Login';
     loginBtn.disabled = false;
 
@@ -440,7 +445,6 @@ async function handleMfaChallenge() {
 
 // Event Listeners
 document.getElementById("googleLoginBtn").addEventListener("click", loginWithGoogle);
-document.getElementById("loginBtn").addEventListener("click", handleLogin);
 document.getElementById("signupBtn").addEventListener("click", handleSignup);
 document.getElementById("confirmBtn").addEventListener("click", handleConfirm);
 document.getElementById("verifyMfaBtn").addEventListener("click", handleMfaChallenge);

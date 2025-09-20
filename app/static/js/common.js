@@ -4,6 +4,7 @@ const $ = (sel) => document.querySelector(sel);
 function setToken(t) {
   // store (no UI preview)
   localStorage.setItem("imagelab_token", t || "");
+  updateNavbarAuth();
 }
 
 function getToken() {
@@ -11,14 +12,35 @@ function getToken() {
 }
 
 
+function logout() {
+  setToken("");
+  alert("Logged out");
+  window.location.href = "/login";
+}
+
+function updateNavbarAuth() {
+  const loginBtn = $("#loginBtn");
+  const profileSection = $("#profileSection");
+  const hasToken = !!getToken();
+
+  if (loginBtn && profileSection) {
+    if (hasToken) {
+      loginBtn.classList.add("d-none");
+      profileSection.classList.remove("d-none");
+    } else {
+      loginBtn.classList.remove("d-none");
+      profileSection.classList.add("d-none");
+    }
+  }
+}
+
 const logoutBtn = $("#logoutBtn");
 if (logoutBtn) {
-  logoutBtn.addEventListener("click", () => {
-    setToken("");
-    alert("Logged out");
-    window.location.href = "/login";
-  });
+  logoutBtn.addEventListener("click", logout);
 }
+
+// Update navbar on page load
+document.addEventListener("DOMContentLoaded", updateNavbarAuth);
 
 async function api(path, opts = {}) {
   const headers = new Headers(opts.headers || {});

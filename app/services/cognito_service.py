@@ -255,6 +255,19 @@ class CognitoService:
         except ClientError as e:
             return {'success': False, 'error': str(e)}
 
+    def get_user_groups(self, username):
+        """Get groups for a specific user - works for both regular and OAuth users"""
+        try:
+            response = self.cognito_client.admin_list_groups_for_user(
+                UserPoolId=self.user_pool_id,
+                Username=username
+            )
+            return [group['GroupName'] for group in response['Groups']]
+        except ClientError as e:
+            print(f"Error getting user groups for {username}: {e}")
+            # Return default group if we can't fetch groups
+            return ['user']
+
     def set_user_mfa_preference(self, access_token, email_enabled=True):
         """Enable/disable email MFA for a user"""
         try:
