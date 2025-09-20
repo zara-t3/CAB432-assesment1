@@ -93,6 +93,9 @@ def create_app():
     @app.get("/presigned-test")
     def page_presigned_test():
         return render_template("presigned_upload.html", title="Direct S3 Upload Test")
+    @app.get("/test-mfa")
+    def page_test_mfa():
+        return render_template("test_mfa.html", title="MFA Test")
 
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")

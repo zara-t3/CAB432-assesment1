@@ -2,27 +2,73 @@
 {% block content %}
   <h1 class="h4 mb-3">Login</h1>
   
+  <!-- Google Login Section -->
+  <div class="card mb-3">
+    <div class="card-body text-center">
+      <h6 class="card-title">Quick Login</h6>
+      <button id="googleLoginBtn" class="btn btn-danger">
+        <i class="fab fa-google me-2"></i>Login with Google
+      </button>
+      <small class="d-block text-muted mt-2">Or use your ImageLab account below</small>
+    </div>
+  </div>
+  
   <!-- Login Form -->
   <div id="loginSection">
     <div class="card">
       <div class="card-body">
-        <div class="row g-2 align-items-center">
-          <div class="col-12 col-md-3">
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
             <label class="form-label">Username</label>
             <input id="username" class="form-control" value="" />
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-4">
             <label class="form-label">Password</label>
             <input id="password" class="form-control" type="password" value="" />
           </div>
-          <div class="col-12 col-md-2 d-grid">
-            <label class="form-label invisible">.</label>
-            <button id="loginBtn" class="btn btn-primary">Login</button>
+          <div class="col-12 col-md-4 d-flex align-items-end">
+            <button id="loginBtn" class="btn btn-primary w-100">Login</button>
           </div>
         </div>
         <div class="text-center mt-2">
           <small class="text-muted">
             Need an account? <a href="#" onclick="showSignup()">Sign up here</a>
+          </small>
+        </div>
+        <div class="alert alert-info mt-2">
+          <small><strong>Note:</strong> Regular accounts require MFA. Google login skips this step.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MFA Challenge Section (Hidden Initially) -->
+  <div id="mfaSection" class="d-none">
+    <div class="card">
+      <div class="card-body">
+        <h5>Email Verification Required</h5>
+        <div id="mfaMessage" class="alert alert-info">
+          Please check your email for a verification code.
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label">Verification Code</label>
+            <input id="mfaCode" type="text" class="form-control" placeholder="Enter 6-digit code" maxlength="6" autocomplete="one-time-code">
+            <div class="form-text">Enter the 6-digit code sent to your email address</div>
+          </div>
+          <div class="col-12 col-md-3 d-flex align-items-end">
+            <button id="verifyMfaBtn" class="btn btn-primary w-100">Verify Code</button>
+          </div>
+          <div class="col-12 col-md-3 d-flex align-items-end">
+            <button class="btn btn-outline-secondary w-100" onclick="backToLogin()">Back to Login</button>
+          </div>
+        </div>
+        
+        <!-- Helpful info for users -->
+        <div class="mt-3">
+          <small class="text-muted">
+            <strong>Tip:</strong> Check your spam folder if you don't see the email. 
+            The code is valid for a few minutes.
           </small>
         </div>
       </div>
@@ -34,22 +80,22 @@
     <div class="card">
       <div class="card-body">
         <h5>Create Account</h5>
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-md-3">
+        <div class="row g-3">
+          <div class="col-12 col-lg-3">
             <label class="form-label">Username</label>
             <input id="signupUsername" class="form-control" />
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-lg-3">
             <label class="form-label">Email</label>
             <input id="signupEmail" class="form-control" type="email" />
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-lg-4">
             <label class="form-label">Password</label>
             <input id="signupPassword" class="form-control" type="password" />
             <div class="form-text">8+ chars, number, upper, lower, symbol</div>
           </div>
-          <div class="col-12 col-md-3 d-grid">
-            <button id="signupBtn" class="btn btn-success">Sign Up</button>
+          <div class="col-12 col-lg-2 d-flex align-items-end">
+            <button id="signupBtn" class="btn btn-primary w-100">Sign Up</button>
           </div>
         </div>
         <div class="text-center mt-2">
@@ -58,29 +104,31 @@
             <a href="#" onclick="showConfirm()">Have confirmation code?</a>
           </small>
         </div>
+        <div class="alert alert-warning mt-2">
+          <small><strong>Note:</strong> Regular accounts require MFA. Google login is faster!</small>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Confirmation Form (Hidden Initially) -->
   <div id="confirmSection" class="d-none">
     <div class="card">
       <div class="card-body">
         <h5>Confirm Email</h5>
         <div class="alert alert-info">
-          Check your email for a 6-digit confirmation code.
+          Check your email for a 6-digit confirmation code to activate your account.
         </div>
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-md-4">
+        <div class="row g-3">
+          <div class="col-12 col-md-5">
             <label class="form-label">Username</label>
             <input id="confirmUsername" class="form-control" />
           </div>
           <div class="col-12 col-md-4">
             <label class="form-label">Confirmation Code</label>
-            <input id="confirmCode" class="form-control" placeholder="123456" />
+            <input id="confirmCode" class="form-control" placeholder="123456" maxlength="6" />
           </div>
-          <div class="col-12 col-md-4 d-grid">
-            <button id="confirmBtn" class="btn btn-warning">Confirm</button>
+          <div class="col-12 col-md-3 d-flex align-items-end">
+            <button id="confirmBtn" class="btn btn-primary w-100">Confirm</button>
           </div>
         </div>
         <div class="text-center mt-2">
@@ -98,20 +146,113 @@
   </div>
 {% endblock %}
 
+{% block head_extra %}
+<!-- Font Awesome for Google icon -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
+
 {% block scripts %}
 <script>
+// Google OAuth Configuration - REPLACE WITH YOUR VALUES
+const COGNITO_DOMAIN = 'ap-southeast-2vt6cuuzgl.auth.ap-southeast-2.amazoncognito.com'; 
+const CLIENT_ID = 'r4jbveuntmkb7s5m6cotd6ere'; 
+const REDIRECT_URI = window.location.origin + '/login';
+
+// Global variables for MFA flow
+let currentMfaSession = null;
+let currentUsername = null;
+
+// Google Login Functions
+function loginWithGoogle() {
+  const googleAuthUrl = `https://${COGNITO_DOMAIN}/oauth2/authorize?` +
+    `identity_provider=Google&` +
+    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+    `response_type=CODE&` +
+    `client_id=${CLIENT_ID}&` +
+    `scope=openid email profile`;
+  
+  window.location.href = googleAuthUrl;
+}
+
+// Check for OAuth callback on page load
+function checkOAuthCallback() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+  const error = urlParams.get('error');
+  
+  if (error) {
+    showStatus(`Google login failed: ${error}`, true);
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return;
+  }
+  
+  if (code) {
+    // Exchange code for tokens
+    exchangeCodeForTokens(code);
+  }
+}
+
+async function exchangeCodeForTokens(code) {
+  try {
+    showStatus('Completing Google login...', false);
+    
+    // Exchange authorization code for tokens
+    const tokenResponse = await fetch(`https://${COGNITO_DOMAIN}/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: REDIRECT_URI,
+        client_id: CLIENT_ID
+      })
+    });
+    
+    if (!tokenResponse.ok) {
+      throw new Error('Failed to exchange code for tokens');
+    }
+    
+    const tokens = await tokenResponse.json();
+    
+    // Store the access token
+    setToken(tokens.access_token);
+    
+    showStatus('Google login successful! Redirecting...', false);
+    
+    // Clean URL and redirect
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+    setTimeout(() => {
+      window.location.href = "/upload";
+    }, 1000);
+    
+  } catch (e) {
+    showStatus(`Google login failed: ${e.message}`, true);
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
 // Show/Hide Functions
 function showLogin() {
   document.getElementById('loginSection').classList.remove('d-none');
   document.getElementById('signupSection').classList.add('d-none');
   document.getElementById('confirmSection').classList.add('d-none');
+  document.getElementById('mfaSection').classList.add('d-none');
   hideStatus();
+  // Reset MFA state
+  currentMfaSession = null;
+  currentUsername = null;
 }
 
 function showSignup() {
   document.getElementById('loginSection').classList.add('d-none');
   document.getElementById('signupSection').classList.remove('d-none');
   document.getElementById('confirmSection').classList.add('d-none');
+  document.getElementById('mfaSection').classList.add('d-none');
   hideStatus();
 }
 
@@ -119,7 +260,35 @@ function showConfirm() {
   document.getElementById('loginSection').classList.add('d-none');
   document.getElementById('signupSection').classList.add('d-none');
   document.getElementById('confirmSection').classList.remove('d-none');
+  document.getElementById('mfaSection').classList.add('d-none');
   hideStatus();
+}
+
+function showMfa(session, username, message) {
+  document.getElementById('loginSection').classList.add('d-none');
+  document.getElementById('signupSection').classList.add('d-none');
+  document.getElementById('confirmSection').classList.add('d-none');
+  document.getElementById('mfaSection').classList.remove('d-none');
+  
+  // Store session and username for MFA verification
+  currentMfaSession = session;
+  currentUsername = username;
+  
+  // Update message
+  document.getElementById('mfaMessage').innerHTML = `
+    <strong>Email sent to your registered address</strong><br>
+    ${message}
+  `;
+  document.getElementById('mfaCode').value = '';
+  document.getElementById('mfaCode').focus();
+  
+  hideStatus();
+}
+
+function backToLogin() {
+  showLogin();
+  // Clear password for security
+  document.getElementById('password').value = '';
 }
 
 function showStatus(message, isError = false) {
@@ -175,7 +344,7 @@ async function handleConfirm() {
       body: JSON.stringify({ username, confirmation_code })
     });
 
-    showStatus('Email confirmed! You can now login.');
+    showStatus('Email confirmed! You can now login. Note: MFA is required for all logins.');
     document.getElementById('username').value = username;
     setTimeout(() => showLogin(), 2000);
     
@@ -194,20 +363,38 @@ async function handleLogin() {
       return;
     }
 
+    const loginBtn = document.getElementById('loginBtn');
+    const originalText = loginBtn.textContent;
+    loginBtn.textContent = 'Sending email...';
+    loginBtn.disabled = true;
+
     const data = await api("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
 
-    setToken(data.access_token);
-    showStatus('Login successful! Redirecting...');
-    setTimeout(() => {
-      window.location.href = "/upload";
-    }, 1000);
+    loginBtn.textContent = originalText;
+    loginBtn.disabled = false;
+
+    if (data.challenge_required) {
+      showMfa(data.session, data.username, data.message);
+    } else {
+      // direct login success - this shouldnt happen
+      setToken(data.access_token);
+      showStatus('Login successful! Redirecting...');
+      setTimeout(() => {
+        window.location.href = "/upload";
+      }, 1000);
+    }
     
   } catch (e) {
+    const loginBtn = document.getElementById('loginBtn');
+    loginBtn.textContent = 'Login';
+    loginBtn.disabled = false;
+
     if (e.message.includes('confirm') || e.message.includes('not confirmed')) {
       showStatus('Please confirm your email first', true);
+      const username = document.getElementById("username").value.trim();
       document.getElementById('confirmUsername').value = username;
       showConfirm();
     } else {
@@ -216,9 +403,93 @@ async function handleLogin() {
   }
 }
 
+async function handleMfaChallenge() {
+  try {
+    const code = document.getElementById("mfaCode").value.trim();
+
+    if (!code) {
+      showStatus('Please enter the verification code', true);
+      return;
+    }
+
+    if (code.length !== 6) {
+      showStatus('Verification code must be 6 digits', true);
+      return;
+    }
+
+    if (!currentMfaSession || !currentUsername) {
+      showStatus('Session expired. Please login again.', true);
+      showLogin();
+      return;
+    }
+
+    const verifyBtn = document.getElementById('verifyMfaBtn');
+    const originalText = verifyBtn.textContent;
+    verifyBtn.textContent = 'Verifying...';
+    verifyBtn.disabled = true;
+
+    const data = await api("/auth/mfa/challenge", {
+      method: "POST",
+      body: JSON.stringify({ 
+        session: currentMfaSession, 
+        code: code,
+        username: currentUsername
+      }),
+    });
+
+    setToken(data.access_token);
+    showStatus('MFA verification successful! Redirecting...');
+    setTimeout(() => {
+      window.location.href = "/upload";
+    }, 1000);
+    
+  } catch (e) {
+    // Reset button
+    const verifyBtn = document.getElementById('verifyMfaBtn');
+    verifyBtn.textContent = 'Verify Code';
+    verifyBtn.disabled = false;
+
+    showStatus(`MFA verification failed: ${e.message}`, true);
+    // Clear the code field for retry
+    document.getElementById('mfaCode').value = '';
+    document.getElementById('mfaCode').focus();
+  }
+}
+
 // Event Listeners
+document.getElementById("googleLoginBtn").addEventListener("click", loginWithGoogle);
 document.getElementById("loginBtn").addEventListener("click", handleLogin);
 document.getElementById("signupBtn").addEventListener("click", handleSignup);
 document.getElementById("confirmBtn").addEventListener("click", handleConfirm);
+document.getElementById("verifyMfaBtn").addEventListener("click", handleMfaChallenge);
+
+// Allow Enter key to trigger actions
+document.getElementById("password").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") handleLogin();
+});
+
+document.getElementById("mfaCode").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") handleMfaChallenge();
+});
+
+document.getElementById("confirmCode").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") handleConfirm();
+});
+
+// Auto-format MFA code input (numbers only, max 6 digits)
+document.getElementById("mfaCode").addEventListener("input", function(e) {
+  let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+  if (value.length > 6) value = value.substr(0, 6); // Max 6 digits
+  e.target.value = value;
+});
+
+document.getElementById("confirmCode").addEventListener("input", function(e) {
+  let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+  if (value.length > 6) value = value.substr(0, 6); // Max 6 digits
+  e.target.value = value;
+});
+
+// Check for OAuth callback on page load
+document.addEventListener('DOMContentLoaded', checkOAuthCallback);
 </script>
 {% endblock %}
