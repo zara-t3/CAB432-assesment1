@@ -32,7 +32,6 @@ def auth_required(fn):
     return wrapper
 
 def admin_required(fn):
-    """Decorator for admin-only endpoints"""
     @wraps(fn)
     @auth_required
     def wrapper(*args, **kwargs):
@@ -78,7 +77,6 @@ def confirm():
 
 @auth_bp.post("/login")
 def login():
-    """Enhanced login with required MFA support"""
     data = request.get_json(force=True, silent=True) or {}
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -91,7 +89,6 @@ def login():
     
     if result['success']:
         if result.get('challenge_required'):
-            # MFA challenge required (this should always happen with required MFA)
             return jsonify({
                 "challenge_required": True,
                 "challenge_name": result['challenge_name'],
@@ -100,7 +97,6 @@ def login():
                 "message": result['message']
             }), 200
         else:
-            # Direct login success (shouldn't happen with required MFA)
             user_info = cognito.verify_token(result['access_token'])
             
             return jsonify({
@@ -118,7 +114,6 @@ def login():
 
 @auth_bp.post("/mfa/challenge")
 def handle_mfa_challenge():
-    """Handle MFA email challenge"""
     data = request.get_json(force=True, silent=True) or {}
     session = data.get("session", "").strip()
     code = data.get("code", "").strip()
@@ -131,7 +126,6 @@ def handle_mfa_challenge():
     result = cognito.respond_to_auth_challenge(session, code, username)
     
     if result['success']:
-        # Get user info including groups for the response
         user_info = cognito.verify_token(result['access_token'])
         
         return jsonify({
@@ -149,19 +143,16 @@ def handle_mfa_challenge():
 @auth_bp.get("/profile")
 @auth_required
 def get_profile():
-    """Get current user profile with group information"""
     return jsonify({
         "username": g.user["username"],
         "role": g.user["role"],
         "groups": g.user["groups"]
     })
 
-# Group Management Endpoints (Admin only)
 
 @auth_bp.get("/groups")
 @admin_required
 def list_groups():
-    """List all available groups"""
     cognito = get_cognito()
     result = cognito.list_groups()
     
@@ -173,7 +164,6 @@ def list_groups():
 @auth_bp.post("/groups")
 @admin_required
 def create_group():
-    """Create a new group"""
     data = request.get_json(force=True, silent=True) or {}
     group_name = data.get("name", "").strip()
     description = data.get("description", "").strip()
@@ -192,7 +182,6 @@ def create_group():
 @auth_bp.post("/users/<username>/groups")
 @admin_required
 def add_user_to_group(username):
-    """Add user to group"""
     data = request.get_json(force=True, silent=True) or {}
     group_name = data.get("group", "").strip()
     
@@ -210,7 +199,6 @@ def add_user_to_group(username):
 @auth_bp.delete("/users/<username>/groups/<group_name>")
 @admin_required
 def remove_user_from_group(username, group_name):
-    """Remove user from group"""
     cognito = get_cognito()
     result = cognito.remove_user_from_group(username, group_name)
     
@@ -222,7 +210,6 @@ def remove_user_from_group(username, group_name):
 @auth_bp.get("/users/<username>/groups")
 @admin_required
 def get_user_groups(username):
-    """Get groups for a specific user"""
     cognito = get_cognito()
     groups = cognito.get_user_groups(username)
     
@@ -234,7 +221,6 @@ def get_user_groups(username):
 @auth_bp.post("/mfa/enable")
 @auth_required
 def enable_mfa():
-    """Enable MFA for current user (though it's required anyway)"""
     try:
         # Get fresh token from header
         auth_header = request.headers.get("Authorization", "")
@@ -254,7 +240,6 @@ def enable_mfa():
 @auth_bp.post("/mfa/disable") 
 @auth_required
 def disable_mfa():
-    """Disable MFA for current user (may not work with required MFA)"""
     try:
         # Get fresh token from header
         auth_header = request.headers.get("Authorization", "")
@@ -271,11 +256,9 @@ def disable_mfa():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-# Add this entire function at the end of your auth.py file
 
 @auth_bp.post("/oauth/token")
 def exchange_oauth_token():
-    """Server-side OAuth token exchange for Google login"""
     data = request.get_json(force=True, silent=True) or {}
     code = data.get("code", "").strip()
     redirect_uri = data.get("redirect_uri", "").strip()
@@ -314,7 +297,7 @@ def exchange_oauth_token():
         )
         
         if not response.ok:
-            print(f"Cognito token exchange failed: {response.status_code} - {response.text}")
+            pass
             return jsonify({"error": "token exchange failed"}), 400
         
         tokens = response.json()
@@ -334,5 +317,5 @@ def exchange_oauth_token():
         }), 200
         
     except Exception as e:
-        print(f"OAuth token exchange error: {e}")
+        pass
         return jsonify({"error": "internal server error"}), 500

@@ -10,7 +10,6 @@ class ParameterStoreService:
         student_number = os.getenv('STUDENT_NUMBER', 'n11544309')
         self.prefix = f"/{student_number}/imagelab"
         
-        print(f"Parameter Store initialized with prefix: {self.prefix}")
 
     def get_app_config(self):
         response = self.ssm.get_parameters_by_path(
@@ -23,9 +22,6 @@ class ParameterStoreService:
             clean_name = param['Name'].replace(f"{self.prefix}/", "").replace("-", "_")
             config[clean_name] = param['Value']
 
-        print(f"Retrieved {len(config)} parameters from Parameter Store")
-
-        # Require all parameters to be present in Parameter Store
         required_params = ['app_url', 's3_bucket_name', 'dynamodb_images_table', 'dynamodb_jobs_table']
         missing_params = [param for param in required_params if param not in config]
 
@@ -38,10 +34,6 @@ class ParameterStoreService:
             'dynamodb_images_table': config['dynamodb_images_table'],
             'dynamodb_jobs_table': config['dynamodb_jobs_table']
         }
-
-        print("Configuration loaded from Parameter Store:")
-        for key, value in app_config.items():
-            print(f"   {key}: {value}")
 
         return app_config
 

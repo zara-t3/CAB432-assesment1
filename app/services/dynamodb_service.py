@@ -14,33 +14,22 @@ class DynamoDBService:
         self.dynamodb = boto3.client('dynamodb', region_name='ap-southeast-2')
         self.dynamodb_resource = boto3.resource('dynamodb', region_name='ap-southeast-2')
         
-        # Try to get table names from Parameter Store via Flask config, fallback to original
         try:
             self.images_table_name = current_app.config.get('DYNAMODB_IMAGES_TABLE')
             self.jobs_table_name = current_app.config.get('DYNAMODB_JOBS_TABLE')
             if self.images_table_name and self.jobs_table_name:
                 source = "Parameter Store" if current_app.config.get('PARAMETER_STORE_ENABLED') else "Environment Variables"
-                print(f"DynamoDB using tables from {source}:")
-                print(f"   Images: {self.images_table_name}")
-                print(f"   Jobs: {self.jobs_table_name}")
             else:
                 self.images_table_name = f'{self.student_number}-imagelab-images'
                 self.jobs_table_name = f'{self.student_number}-imagelab-jobs'
-                print(f"DynamoDB using default tables:")
-                print(f"   Images: {self.images_table_name}")
-                print(f"   Jobs: {self.jobs_table_name}")
         except RuntimeError:
-            # Not in Flask context
             self.images_table_name = f'{self.student_number}-imagelab-images'
             self.jobs_table_name = f'{self.student_number}-imagelab-jobs'
-            print(f"DynamoDB service initialized for {self.qut_username}")
         
-        # Get table references for high-level operations
         self.images_table = self.dynamodb_resource.Table(self.images_table_name)
         self.jobs_table = self.dynamodb_resource.Table(self.jobs_table_name)
 
     def create_image_record(self, image_id: str, name: str, owner: str, s3_key: str) -> Dict:
-        """Create image record with S3 key"""
         try:
             response = self.dynamodb.put_item(
                 TableName=self.images_table_name,
@@ -56,7 +45,7 @@ class DynamoDBService:
                     "status": {"S": "uploaded"}
                 }
             )
-            print(f"Created image record with S3: {image_id}")
+            pass
             
             return {
                 'id': image_id,
@@ -69,11 +58,10 @@ class DynamoDBService:
                 'status': 'uploaded'
             }
         except ClientError as e:
-            print(f"Failed to create image: {e}")
+            pass
             raise Exception(f"Failed to create image record: {e}")
 
     def get_image(self, image_id: str) -> Optional[Dict]:
-        """Get single image with S3 keys"""
         try:
             response = self.dynamodb.get_item(
                 TableName=self.images_table_name,
@@ -97,15 +85,14 @@ class DynamoDBService:
                 'created_at': item['created_at']['S'],
                 'status': item['status']['S']
             }
-            print(f"Retrieved image: {image_id}")
+            pass
             return result
             
         except ClientError as e:
-            print(f"Failed to get image {image_id}: {e}")
+            pass
             return None
 
     def list_images_for_user(self, owner: str, limit: int = 20) -> List[Dict]:
-        """List images for user with S3 keys"""
         try:
             response = self.dynamodb.query(
                 TableName=self.images_table_name,
@@ -128,15 +115,14 @@ class DynamoDBService:
                     results.append(result)
             
             results.sort(key=lambda x: x['created_at'], reverse=True)
-            print(f"Found {len(results)} images for user {owner}")
+            pass
             return results
             
         except ClientError as e:
-            print(f"Failed to list images for {owner}: {e}")
+            pass
             return []
 
     def list_all_images(self, limit: int = 20) -> List[Dict]:
-        """List all images with S3 keys"""
         try:
             response = self.dynamodb.query(
                 TableName=self.images_table_name,
@@ -158,15 +144,14 @@ class DynamoDBService:
                 results.append(result)
             
             results.sort(key=lambda x: x['created_at'], reverse=True)
-            print(f"Found {len(results)} total images")
+            pass
             return results
             
         except ClientError as e:
-            print(f"Failed to list all images: {e}")
+            pass
             return []
 
     def update_processed_s3_key(self, image_id: str, processed_s3_key: str):
-        """Update processed S3 key"""
         try:
             self.dynamodb.update_item(
                 TableName=self.images_table_name,
@@ -179,13 +164,12 @@ class DynamoDBService:
                     ":key": {"S": processed_s3_key}
                 }
             )
-            print(f"Updated processed S3 key for {image_id}")
+            pass
         except ClientError as e:
-            print(f"Failed to update processed S3 key: {e}")
+            pass
             raise
 
     def update_thumb_s3_key(self, image_id: str, thumb_s3_key: str):
-        """Update thumbnail S3 key"""
         try:
             self.dynamodb.update_item(
                 TableName=self.images_table_name,
@@ -198,13 +182,12 @@ class DynamoDBService:
                     ":key": {"S": thumb_s3_key}
                 }
             )
-            print(f"Updated thumbnail S3 key for {image_id}")
+            pass
         except ClientError as e:
-            print(f"Failed to update thumbnail S3 key: {e}")
+            pass
             raise
 
     def _convert_item_to_dict(self, item: Dict) -> Dict:
-        """Convert DynamoDB item to app format"""
         return {
             'id': item['image_id']['S'],
             'name': item['name']['S'],
@@ -216,7 +199,6 @@ class DynamoDBService:
             'status': item['status']['S']
         }
 
-    # Job operations
     def create_job_record(self, job_id: str, owner: str, image_id: str, 
                          extra_passes: int, blur_strength: int = 12) -> Dict:
         try:
@@ -234,7 +216,7 @@ class DynamoDBService:
                     "created_at": {"S": datetime.utcnow().isoformat()}
                 }
             )
-            print(f"Created job record: {job_id}")
+            pass
             
             return {
                 'id': job_id,
@@ -248,7 +230,7 @@ class DynamoDBService:
                 'created_at': datetime.utcnow().isoformat()
             }
         except ClientError as e:
-            print(f"Failed to create job: {e}")
+            pass
             raise Exception(f"Failed to create job record: {e}")
 
     def update_job_completion(self, job_id: str, duration_ms: int, outputs: List[Dict], status: str = 'done'):
@@ -268,9 +250,9 @@ class DynamoDBService:
                     ":duration": {"N": str(duration_ms)}
                 }
             )
-            print(f"Updated job completion: {job_id}")
+            pass
         except ClientError as e:
-            print(f"Failed to update job completion: {e}")
+            pass
             raise
 
     def list_jobs_for_user(self, owner: str, limit: int = 20) -> List[Dict]:
@@ -305,11 +287,11 @@ class DynamoDBService:
                     results.append(result)
             
             results.sort(key=lambda x: x['created_at'], reverse=True)
-            print(f"Found {len(results)} jobs for user {owner}")
+            pass
             return results
             
         except ClientError as e:
-            print(f"Failed to list jobs for {owner}: {e}")
+            pass
             return []
 
     def list_all_jobs(self, limit: int = 20) -> List[Dict]:
@@ -343,47 +325,40 @@ class DynamoDBService:
                 results.append(result)
             
             results.sort(key=lambda x: x['created_at'], reverse=True)
-            print(f"Found {len(results)} total jobs")
+            pass
             return results
             
         except ClientError as e:
-            print(f"Failed to list all jobs: {e}")
+            pass
             return []
 
-    # Backward compatibility methods for simplified interface
     def store_image_metadata(self, user_id, image_id, filename, s3_key):
-        """Backward compatibility for simplified interface"""
         try:
             return self.create_image_record(image_id, filename, user_id, s3_key)
         except:
             return False
 
     def get_user_images(self, user_id):
-        """Backward compatibility for simplified interface"""
         return self.list_images_for_user(user_id)
 
     def store_job_record(self, user_id, job_id, job_type, input_s3_key, status='pending'):
-        """Backward compatibility for simplified interface"""
         try:
             return self.create_job_record(job_id, user_id, "unknown", 0, 12)
         except:
             return False
 
     def get_user_jobs(self, user_id):
-        """Backward compatibility for simplified interface"""
         return self.list_jobs_for_user(user_id)
 
-# Global instance
+
 db_service = None
 
 def get_db_service() -> DynamoDBService:
-    """Get database service instance"""
     global db_service
     if db_service is None:
         db_service = DynamoDBService()
     return db_service
 
-# Backward compatibility
 def get_dynamodb_service():
     return get_db_service()
 

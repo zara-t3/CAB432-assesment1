@@ -11,7 +11,6 @@ jobs_bp = Blueprint("jobs", __name__)
 @jobs_bp.post("")
 @auth_required
 def create_job():
-    """Create and execute face blur job with S3 storage"""
     data = request.get_json(force=True, silent=True) or {}
     img_id = data.get("image_id")
     extra_passes = int(data.get("extra_passes", 0))
@@ -24,7 +23,7 @@ def create_job():
         db = get_db_service()
         s3 = get_s3_service()
         
-        # Get image record from DynamoDB
+        # get image record
         rec = db.get_image(img_id)
         if not rec:
             return jsonify({"error": "image not found"}), 404
@@ -34,7 +33,7 @@ def create_job():
 
         job_id = str(uuid.uuid4())
         
-        # Create job record in DynamoDB
+        # create job record
         job_record = db.create_job_record(
             job_id=job_id,
             owner=rec["owner"],
@@ -43,7 +42,7 @@ def create_job():
             blur_strength=blur_strength
         )
         
-        print(f"Starting face blur job with S3: {job_id}")
+        pass
         start = time.time()
 
        
@@ -100,17 +99,17 @@ def create_job():
             status="done"
         )
 
-        print(f"Face blur job completed with S3: {job_id} in {duration_ms}ms")
+        pass
         
         return jsonify({
             "job_id": job_id,
             "status": "done",
             "duration_ms": duration_ms,
-            "outputs": []  # keep same API response format
+            "outputs": []  
         })
         
     except Exception as e:
-        print(f"Job failed: {e}")
+        pass
         
         try:
             if 'job_id' in locals():
@@ -124,7 +123,6 @@ def create_job():
 @jobs_bp.get("")
 @auth_required
 def list_jobs():
-    """List jobs from DynamoDB"""
     limit = int(request.args.get("limit", 20))
     offset = int(request.args.get("offset", 0))
     owner = request.args.get("owner")
@@ -143,7 +141,7 @@ def list_jobs():
         total = len(items)
         paginated_items = items[offset:offset+limit]
         
-        print(f"Listed {len(paginated_items)} jobs from DynamoDB")
+        pass
         
         return jsonify({
             "total": total,
@@ -151,5 +149,5 @@ def list_jobs():
         })
         
     except Exception as e:
-        print(f"Failed to list jobs: {e}")
+        pass
         return jsonify({"error": "Failed to list jobs"}), 500

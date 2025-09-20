@@ -49,7 +49,6 @@
 
 {% block scripts %}
 <script>
-// Load list, render rows, then load thumbnails with auth
 async function loadImages() {
   try {
     const j = await api("/images");
@@ -59,7 +58,6 @@ async function loadImages() {
     j.items.forEach(i => {
       const tr = document.createElement("tr");
 
-      // Thumbnail cell (placeholder <img>, we fill src after auth fetch)
       const tdThumb = document.createElement("td");
       tdThumb.style.width = "120px";
       tdThumb.innerHTML = `
@@ -116,7 +114,6 @@ async function loadImages() {
 
         actionsDiv.appendChild(topRow);
 
-        // Second row of buttons
         const bottomRow = document.createElement("div");
         bottomRow.className = "d-flex gap-1";
 
@@ -150,7 +147,6 @@ async function loadImages() {
       body.appendChild(tr);
     });
 
-    // After rows exist, fetch thumbnails with Authorization
     await loadThumbs(j.items.map(x => x.id));
   } catch (e) {
     alert("Failed to load images: " + e.message);
@@ -173,7 +169,7 @@ async function loadThumbs(ids) {
         img.src = url;
         img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 10000);
       }
-    } catch (_) { /* ignore per-thumb failure */ }
+    } catch (_) { }
   }
 }
 
@@ -205,14 +201,12 @@ async function downloadImage(id, version) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 async function showMetadata(imageId) {
-  // Show modal immediately with loading spinner
   const modal = new bootstrap.Modal(document.getElementById('metadataModal'));
   modal.show();
   
   try {
     const metadata = await api(`/images/${imageId}/metadata`);
     
-    // Create formatted metadata display
     const content = document.getElementById('metadataContent');
     content.innerHTML = `
       <div class="card">

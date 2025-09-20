@@ -17,7 +17,6 @@ def create_app():
     try:
         from .services.parameter_store_service import get_app_config
         
-        print("Loading configuration from Parameter Store...")
         config = get_app_config()
     
         app.config.update({
@@ -27,11 +26,9 @@ def create_app():
             'DYNAMODB_JOBS_TABLE': config['dynamodb_jobs_table']
         })
         
-        print("Configuration loaded from Parameter Store")
         parameter_store_enabled = True
         
     except Exception as e:
-        print(f"Parameter Store unavailable, using environment variables: {e}")
         
         student_number = os.getenv('STUDENT_NUMBER', 'n11544309')
         app.config.update({
@@ -93,7 +90,11 @@ def create_app():
     @app.get("/profile")
     def page_profile():
         return render_template("profile.html", title="Profile")
-    
+
+    @app.get("/direct-upload")
+    def page_direct_upload():
+        return render_template("presigned_upload.html", title="Direct Upload")
+
     @app.get("/presigned-test")
     def page_presigned_test():
         return render_template("presigned_upload.html", title="Direct S3 Upload Test")
@@ -106,9 +107,8 @@ def create_app():
     app.register_blueprint(images_bp, url_prefix="/api/v1/images")
     app.register_blueprint(jobs_bp, url_prefix="/api/v1/jobs")
 
-    print("== URL MAP ==")
     for rule in app.url_map.iter_rules():
-        print(f"{','.join(rule.methods)}  {rule.rule}")
+        pass
 
     return app
 

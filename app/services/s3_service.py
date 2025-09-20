@@ -1,4 +1,3 @@
-# app/services/s3_service.py - Restored with Parameter Store integration
 import boto3
 import os
 import tempfile
@@ -16,21 +15,14 @@ class S3Service:
         
         self.s3_client = boto3.client('s3', region_name='ap-southeast-2')
         
-        # Try to get bucket name from Parameter Store via Flask config, fallback to original
         try:
             self.bucket_name = current_app.config.get('S3_BUCKET_NAME')
-            if self.bucket_name:
-                print(f"S3 Service using bucket from Parameter Store: {self.bucket_name}")
-            else:
+            if not self.bucket_name:
                 self.bucket_name = f'{self.student_number}-imagelab-bucket'
-                print(f"S3 Service using default bucket: {self.bucket_name}")
         except RuntimeError:
-            # Not in Flask context
             self.bucket_name = f'{self.student_number}-imagelab-bucket'
-            print(f"S3 Service initialized for bucket: {self.bucket_name}")
     
     def configure_cors(self):
-        """Configure CORS policy for direct browser uploads"""
         cors_configuration = {
             'CORSRules': [
                 {
@@ -48,17 +40,14 @@ class S3Service:
                 Bucket=self.bucket_name,
                 CORSConfiguration=cors_configuration
             )
-            print(f"Configured CORS for bucket: {self.bucket_name}")
             return True
-        except ClientError as e:
-            print(f"Failed to configure CORS: {e}")
+        except ClientError:
             return False
     
     def create_bucket_if_not_exists(self):
-        """Create S3 bucket with required QUT tags and CORS"""
         try:
             self.s3_client.head_bucket(Bucket=self.bucket_name)
-            print(f"Bucket {self.bucket_name} already exists")
+            pass
             self.configure_cors()
             return True
             
@@ -70,7 +59,7 @@ class S3Service:
                         Bucket=self.bucket_name,
                         CreateBucketConfiguration={'LocationConstraint': 'ap-southeast-2'}
                     )
-                    print(f"Created bucket: {self.bucket_name}")
+                    pass
                     
                     self.s3_client.put_bucket_tagging(
                         Bucket=self.bucket_name,
@@ -81,20 +70,19 @@ class S3Service:
                             ]
                         }
                     )
-                    print("Added QUT tags to bucket")
+                    pass
                     
                     self.configure_cors()
                     return True
                     
                 except ClientError as create_error:
-                    print(f"Failed to create bucket: {create_error}")
+                    pass
                     return False
             else:
-                print(f"Error checking bucket: {e}")
+                pass
                 return False
     
     def upload_image(self, file_obj: BinaryIO, user: str, image_id: str, filename: str = "original.jpg") -> str:
-        """Upload image file to S3 and return S3 key"""
         try:
             s3_key = f"images/{user}/{image_id}/{filename}"
             
@@ -112,15 +100,14 @@ class S3Service:
                 }
             )
             
-            print(f"Uploaded image to S3: {s3_key}")
+            pass
             return s3_key
             
         except ClientError as e:
-            print(f"Failed to upload image to S3: {e}")
+            pass
             raise Exception(f"S3 upload failed: {e}")
     
     def upload_processed_image(self, local_file_path: str, user: str, image_id: str, filename: str) -> str:
-        """Upload processed image from local file to S3"""
         try:
             s3_key = f"images/{user}/{image_id}/processed/{filename}"
             
@@ -138,25 +125,23 @@ class S3Service:
                 }
             )
             
-            print(f"Uploaded processed image to S3: {s3_key}")
+            pass
             return s3_key
             
         except ClientError as e:
-            print(f"Failed to upload processed image: {e}")
+            pass
             raise Exception(f"S3 processed upload failed: {e}")
     
     def download_image(self, s3_key: str) -> bytes:
-        """Download image from S3 as bytes"""
         try:
             response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
             return response['Body'].read()
             
         except ClientError as e:
-            print(f"Failed to download from S3: {e}")
+            pass
             raise Exception(f"S3 download failed: {e}")
     
     def generate_presigned_url(self, s3_key: str, expiration: int = 3600, method: str = 'get_object') -> str:
-        """Generate pre-signed URL for direct client access"""
         try:
             url = self.s3_client.generate_presigned_url(
                 method,
@@ -166,11 +151,10 @@ class S3Service:
             return url
             
         except ClientError as e:
-            print(f"Failed to generate pre-signed URL: {e}")
+            pass
             raise Exception(f"Pre-signed URL generation failed: {e}")
     
     def generate_presigned_upload_url(self, s3_key: str, content_type: str = 'image/jpeg', expiration: int = 3600) -> Dict:
-        """Generate pre-signed URL for direct client upload with proper conditions"""
         try:
             conditions = [
                 {'Content-Type': content_type},
@@ -190,7 +174,7 @@ class S3Service:
                 ExpiresIn=expiration
             )
             
-            print(f"Generated pre-signed upload URL for: {s3_key}")
+            pass
             
             return {
                 'url': response['url'],
@@ -199,11 +183,10 @@ class S3Service:
             }
             
         except ClientError as e:
-            print(f"Failed to generate pre-signed upload URL: {e}")
+            pass
             raise Exception(f"Pre-signed upload URL generation failed: {e}")
     
     def create_thumbnail(self, s3_key: str, user: str, image_id: str, size: tuple = (160, 160)) -> str:
-        """Download image, create thumbnail, upload back to S3"""
         try:
             image_data = self.download_image(s3_key)
             
@@ -222,25 +205,23 @@ class S3Service:
                     ExtraArgs={'ContentType': 'image/jpeg'}
                 )
                 
-                print(f"Created thumbnail: {thumb_s3_key}")
+                pass
                 return thumb_s3_key
                 
         except Exception as e:
-            print(f"Failed to create thumbnail: {e}")
+            pass
             raise Exception(f"Thumbnail creation failed: {e}")
     
     def delete_image(self, s3_key: str):
-        """Delete image from S3"""
         try:
             self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
-            print(f"Deleted from S3: {s3_key}")
+            pass
             
         except ClientError as e:
-            print(f"Failed to delete from S3: {e}")
+            pass
             raise Exception(f"S3 delete failed: {e}")
     
     def verify_object_exists(self, s3_key: str) -> bool:
-        """Verify that an object exists in S3"""
         try:
             self.s3_client.head_object(Bucket=self.bucket_name, Key=s3_key)
             return True
@@ -250,7 +231,6 @@ class S3Service:
             raise Exception(f"Error checking S3 object: {e}")
     
     def _get_content_type(self, filename: str) -> str:
-        """Get content type based on file extension"""
         ext = filename.lower().split('.')[-1]
         content_types = {
             'jpg': 'image/jpeg',
@@ -263,7 +243,6 @@ class S3Service:
 
     # Backward compatibility methods
     def upload_file(self, file_data, s3_key, content_type='image/jpeg'):
-        """Simple file upload for compatibility"""
         try:
             self.s3_client.put_object(
                 Bucket=self.bucket_name,
@@ -271,14 +250,13 @@ class S3Service:
                 Body=file_data,
                 ContentType=content_type
             )
-            print(f"Uploaded to S3: {self.bucket_name}/{s3_key}")
+            pass
             return True
         except ClientError as e:
-            print(f"S3 upload failed: {e}")
+            pass
             return False
 
     def download_file(self, s3_key):
-        """Simple file download for compatibility"""
         try:
             response = self.s3_client.get_object(
                 Bucket=self.bucket_name,
@@ -286,13 +264,12 @@ class S3Service:
             )
             return response['Body'].read()
         except ClientError as e:
-            print(f"S3 download failed: {e}")
+            pass
             return None
 
 s3_service = None
 
 def get_s3_service() -> S3Service:
-    """Get S3 service instance - singleton pattern"""
     global s3_service
     if s3_service is None:
         s3_service = S3Service()

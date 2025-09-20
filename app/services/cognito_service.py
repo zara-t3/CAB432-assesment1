@@ -11,21 +11,16 @@ class CognitoService:
         
         self.client_secret = get_secret('cognito_client_secret')
         if not self.client_secret:
-            print("WARNING: Could not retrieve Cognito client secret from Secrets Manager")
             self.client_secret = os.getenv('COGNITO_CLIENT_SECRET', '')
-            
-        print(f"Cognito service initialized with secret from Secrets Manager: {'✓' if self.client_secret else '✗'}")
         
         self.cognito_client = boto3.client("cognito-idp", region_name="ap-southeast-2")
 
     def secret_hash(self, username):
-        """From tutorial code"""
         message = bytes(username + self.client_id, 'utf-8') 
         key = bytes(self.client_secret, 'utf-8') 
         return base64.b64encode(hmac.new(key, message, digestmod=hashlib.sha256).digest()).decode()
 
     def sign_up(self, username, password, email):
-        """From tutorial signUp.py"""
         try:
             response = self.cognito_client.sign_up(
                 ClientId=self.client_id,
@@ -39,7 +34,6 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def confirm_signup(self, username, confirmation_code):
-        """From tutorial confirm.py"""
         try:
             response = self.cognito_client.confirm_sign_up(
                 ClientId=self.client_id,
@@ -48,19 +42,16 @@ class CognitoService:
                 SecretHash=self.secret_hash(username)
             )
             
-            # Auto-assign new users to 'user' group
             try:
                 self.add_user_to_group(username, 'user')
-                print(f"Auto-assigned {username} to 'user' group")
-            except Exception as e:
-                print(f"Failed to auto-assign user to group: {e}")
+            except Exception:
+                pass
             
             return {'success': True, 'message': 'Email confirmed'}
         except ClientError as e:
             return {'success': False, 'error': str(e)}
 
     def authenticate(self, username, password):
-        """Enhanced login with required MFA support"""
         try:
             response = self.cognito_client.initiate_auth(
                 AuthFlow="USER_PASSWORD_AUTH",
@@ -72,7 +63,6 @@ class CognitoService:
                 ClientId=self.client_id
             )
             
-            # With required MFA, we should always get a challenge
             if 'ChallengeName' in response:
                 return {
                     'success': True,
@@ -83,7 +73,6 @@ class CognitoService:
                     'message': 'Please check your email for verification code'
                 }
             
-            # This case should rarely happen with required MFA, but handle gracefully
             elif 'AuthenticationResult' in response:
                 tokens = response["AuthenticationResult"]
                 return {
@@ -94,11 +83,9 @@ class CognitoService:
                     'token_type': 'Bearer'
                 }
             
-            # Unexpected response format
             else:
-                print(f"Unexpected response format: {response}")
                 return {
-                    'success': False, 
+                    'success': False,
                     'error': 'Unexpected authentication response format'
                 }
                 
@@ -106,7 +93,6 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def respond_to_auth_challenge(self, session, challenge_response, username):
-        """Handle MFA email challenge"""
         try:
             response = self.cognito_client.respond_to_auth_challenge(
                 ClientId=self.client_id,
@@ -134,15 +120,12 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def verify_token(self, access_token):
-        """Verify token and get user info with groups - handles both regular and OAuth tokens"""
         try:
             response = self.cognito_client.get_user(AccessToken=access_token)
             username = response['Username']
             
-            # Get user's groups
             groups = self.get_user_groups(username)
             
-            # Determine primary role (highest priority group)
             role = self._determine_primary_role(groups)
             
             return {
@@ -152,26 +135,17 @@ class CognitoService:
                 'groups': groups
             }
         except ClientError as e:
-            print(f"Token verification failed: {e}")
-            
-            # If direct token verification fails, try alternative approach for OAuth tokens
             try:
-                # For OAuth tokens, we might need to handle them differently
-                # Try to decode the JWT to get user info
                 import json
                 import base64
                 
-                # JWT tokens have 3 parts separated by dots
                 parts = access_token.split('.')
                 if len(parts) == 3:
-                    # Decode the payload (middle part)
                     payload = parts[1]
-                    # Add padding if needed
                     payload += '=' * (4 - len(payload) % 4)
                     decoded = base64.b64decode(payload)
                     token_data = json.loads(decoded)
                     
-                    # Extract username from token
                     username = token_data.get('cognito:username') or token_data.get('username')
                     
                     if username:
@@ -185,22 +159,20 @@ class CognitoService:
                             'groups': groups
                         }
                 
-            except Exception as jwt_error:
-                print(f"JWT decoding also failed: {jwt_error}")
-            
+            except Exception:
+                pass
+
             return {'success': False, 'error': str(e)}
 
     def _determine_primary_role(self, groups):
-        """Determine primary role from groups (admin > user)"""
         if 'admin' in groups:
             return 'admin'
         elif 'user' in groups:
             return 'user'
         else:
-            return 'user'  # Default
+            return 'user'
 
     def add_user_to_group(self, username, group_name):
-        """Add user to a group"""
         try:
             self.cognito_client.admin_add_user_to_group(
                 UserPoolId=self.user_pool_id,
@@ -212,7 +184,6 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def remove_user_from_group(self, username, group_name):
-        """Remove user from a group"""
         try:
             self.cognito_client.admin_remove_user_from_group(
                 UserPoolId=self.user_pool_id,
@@ -224,7 +195,6 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def list_groups(self):
-        """List all available groups"""
         try:
             response = self.cognito_client.list_groups(
                 UserPoolId=self.user_pool_id
@@ -244,7 +214,6 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def create_group(self, group_name, description=""):
-        """Create a new group"""
         try:
             self.cognito_client.create_group(
                 GroupName=group_name,
@@ -256,20 +225,16 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def get_user_groups(self, username):
-        """Get groups for a specific user - works for both regular and OAuth users"""
         try:
             response = self.cognito_client.admin_list_groups_for_user(
                 UserPoolId=self.user_pool_id,
                 Username=username
             )
             return [group['GroupName'] for group in response['Groups']]
-        except ClientError as e:
-            print(f"Error getting user groups for {username}: {e}")
-            # Return default group if we can't fetch groups
+        except ClientError:
             return ['user']
 
     def set_user_mfa_preference(self, access_token, email_enabled=True):
-        """Enable/disable email MFA for a user"""
         try:
             self.cognito_client.set_user_mfa_preference(
                 AccessToken=access_token,
@@ -282,7 +247,6 @@ class CognitoService:
         except ClientError as e:
             return {'success': False, 'error': str(e)}
 
-# Global instance
 _cognito = None
 def get_cognito():
     global _cognito

@@ -3,7 +3,6 @@ import sys
 from botocore.exceptions import ClientError
 
 def create_tables():
-    """Create DynamoDB tables following QUT CAB432 requirements"""
     
     QUT_USERNAME = "n11544309@qut.edu.au"  
     STUDENT_NUMBER = "n11544309"  
@@ -78,7 +77,6 @@ def create_tables():
     return True
 
 if __name__ == "__main__":
-    # Check for AWS credentials
     try:
         sts = boto3.client('sts')
         identity = sts.get_caller_identity()

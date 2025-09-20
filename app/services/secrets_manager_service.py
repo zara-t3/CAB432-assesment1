@@ -11,7 +11,6 @@ class SecretsManagerService:
         student_number = os.getenv('STUDENT_NUMBER', 'n11544309')
         self.secret_name = f"{student_number}-imagelab-secrets"
         
-        print(f"Secrets Manager initialized for: {self.secret_name}")
         self._cached_secrets = None
 
     def get_secrets(self):
@@ -25,12 +24,12 @@ class SecretsManagerService:
             secrets = json.loads(secret_string)
             
             self._cached_secrets = secrets
-            print(f"Retrieved {len(secrets)} secrets from Secrets Manager")
+            pass
             return secrets
             
         except ClientError as e:
-            print(f"Failed to get secrets from Secrets Manager: {e}")
-            print("Falling back to environment variables")
+            pass
+            pass
             
             # Fallback to environment variables
             fallback_secrets = {

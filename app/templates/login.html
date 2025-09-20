@@ -6,7 +6,7 @@
   <div class="card mb-3">
     <div class="card-body text-center">
       <h6 class="card-title">Quick Login</h6>
-      <button id="googleLoginBtn" class="btn btn-danger">
+      <button id="googleLoginBtn" class="btn btn-danger d-flex align-items-center justify-content-center mx-auto" style="width: fit-content;">
         <i class="fab fa-google me-2"></i>Login with Google
       </button>
       <small class="d-block text-muted mt-2">Or use your ImageLab account below</small>
@@ -18,7 +18,7 @@
     <div class="card">
       <div class="card-body">
         <div class="row g-3">
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-5">
             <label class="form-label">Username</label>
             <input id="username" class="form-control" value="" />
           </div>
@@ -26,8 +26,9 @@
             <label class="form-label">Password</label>
             <input id="password" class="form-control" type="password" value="" />
           </div>
-          <div class="col-12 col-md-4 d-flex align-items-end">
-            <button id="loginFormBtn" type="button" class="btn btn-primary w-100" onclick="handleLogin()">Login</button>
+          <div class="col-12 col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <button id="loginFormBtn" type="button" class="btn btn-primary w-100 d-block" onclick="handleLogin()">Login</button>
           </div>
         </div>
         <div class="text-center mt-2">
@@ -53,11 +54,13 @@
             <input id="mfaCode" type="text" class="form-control" placeholder="Enter 6-digit code" maxlength="6" autocomplete="one-time-code">
             <div class="form-text">Enter the 6-digit code sent to your email address</div>
           </div>
-          <div class="col-12 col-md-3 d-flex align-items-end">
-            <button id="verifyMfaBtn" class="btn btn-primary w-100">Verify Code</button>
+          <div class="col-12 col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <button id="verifyMfaBtn" class="btn btn-primary w-100 d-block">Verify Code</button>
           </div>
-          <div class="col-12 col-md-3 d-flex align-items-end">
-            <button class="btn btn-outline-secondary w-100" onclick="backToLogin()">Back to Login</button>
+          <div class="col-12 col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-outline-secondary w-100 d-block" onclick="backToLogin()">Back to Login</button>
           </div>
         </div>
         
@@ -91,8 +94,9 @@
             <input id="signupPassword" class="form-control" type="password" />
             <div class="form-text">8+ chars, number, upper, lower, symbol</div>
           </div>
-          <div class="col-12 col-lg-2 d-flex align-items-end">
-            <button id="signupBtn" class="btn btn-primary w-100">Sign Up</button>
+          <div class="col-12 col-lg-2">
+            <label class="form-label">&nbsp;</label>
+            <button id="signupBtn" class="btn btn-primary w-100 d-block">Sign Up</button>
           </div>
         </div>
         <div class="text-center mt-2">
@@ -121,8 +125,9 @@
             <label class="form-label">Confirmation Code</label>
             <input id="confirmCode" class="form-control" placeholder="123456" maxlength="6" />
           </div>
-          <div class="col-12 col-md-3 d-flex align-items-end">
-            <button id="confirmBtn" class="btn btn-primary w-100">Confirm</button>
+          <div class="col-12 col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <button id="confirmBtn" class="btn btn-primary w-100 d-block">Confirm</button>
           </div>
         </div>
         <div class="text-center mt-2">
@@ -175,13 +180,11 @@ function checkOAuthCallback() {
   
   if (error) {
     showStatus(`Google login failed: ${error}`, true);
-    // Clean URL
     window.history.replaceState({}, document.title, window.location.pathname);
     return;
   }
   
   if (code) {
-    // Exchange code for tokens
     exchangeCodeForTokens(code);
   }
 }
@@ -190,7 +193,6 @@ async function exchangeCodeForTokens(code) {
   try {
     showStatus('Completing Google login...', false);
     
-    // Call your server instead of Cognito directly
     const data = await api('/auth/oauth/token', {
       method: 'POST',
       body: JSON.stringify({
@@ -199,12 +201,11 @@ async function exchangeCodeForTokens(code) {
       })
     });
     
-    // Store the access token
+
     setToken(data.access_token);
     
     showStatus('Google login successful! Redirecting...', false);
-    
-    // Clean URL and redirect
+
     window.history.replaceState({}, document.title, window.location.pathname);
     
     setTimeout(() => {
@@ -213,12 +214,10 @@ async function exchangeCodeForTokens(code) {
     
   } catch (e) {
     showStatus(`Google login failed: ${e.message}`, true);
-    // Clean URL
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
 
-// Show/Hide Functions
 function showLogin() {
   document.getElementById('loginSection').classList.remove('d-none');
   document.getElementById('signupSection').classList.add('d-none');
@@ -252,11 +251,10 @@ function showMfa(session, username, message) {
   document.getElementById('confirmSection').classList.add('d-none');
   document.getElementById('mfaSection').classList.remove('d-none');
   
-  // Store session and username for MFA verification
+  // Store session and username
   currentMfaSession = session;
   currentUsername = username;
   
-  // Update message
   document.getElementById('mfaMessage').innerHTML = `
     <strong>Email sent to your registered address</strong><br>
     ${message}
@@ -269,7 +267,7 @@ function showMfa(session, username, message) {
 
 function backToLogin() {
   showLogin();
-  // Clear password for security
+  // Clear password
   document.getElementById('password').value = '';
 }
 
@@ -285,7 +283,6 @@ function hideStatus() {
   document.getElementById('statusMessage').classList.add('d-none');
 }
 
-// Authentication Functions
 async function handleSignup() {
   try {
     const username = document.getElementById('signupUsername').value.trim();
@@ -336,11 +333,9 @@ async function handleConfirm() {
 }
 
 async function handleLogin() {
-  console.log('handleLogin function called'); // Debug
   try {
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
-    console.log('Username:', username, 'Password length:', password.length); // Debug
 
     if (!username || !password) {
       showStatus('Please enter username and password', true);
