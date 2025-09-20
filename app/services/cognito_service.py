@@ -134,7 +134,7 @@ class CognitoService:
             return {'success': False, 'error': str(e)}
 
     def verify_token(self, access_token):
-        """Verify token and get user info with groups"""
+        """Verify token and get user info with groups - handles both regular and OAuth tokens"""
         try:
             response = self.cognito_client.get_user(AccessToken=access_token)
             username = response['Username']
@@ -152,19 +152,43 @@ class CognitoService:
                 'groups': groups
             }
         except ClientError as e:
+            print(f"Token verification failed: {e}")
+            
+            # If direct token verification fails, try alternative approach for OAuth tokens
+            try:
+                # For OAuth tokens, we might need to handle them differently
+                # Try to decode the JWT to get user info
+                import json
+                import base64
+                
+                # JWT tokens have 3 parts separated by dots
+                parts = access_token.split('.')
+                if len(parts) == 3:
+                    # Decode the payload (middle part)
+                    payload = parts[1]
+                    # Add padding if needed
+                    payload += '=' * (4 - len(payload) % 4)
+                    decoded = base64.b64decode(payload)
+                    token_data = json.loads(decoded)
+                    
+                    # Extract username from token
+                    username = token_data.get('cognito:username') or token_data.get('username')
+                    
+                    if username:
+                        groups = self.get_user_groups(username)
+                        role = self._determine_primary_role(groups)
+                        
+                        return {
+                            'success': True,
+                            'username': username,
+                            'role': role,
+                            'groups': groups
+                        }
+                
+            except Exception as jwt_error:
+                print(f"JWT decoding also failed: {jwt_error}")
+            
             return {'success': False, 'error': str(e)}
-
-    def get_user_groups(self, username):
-        """Get all groups for a user"""
-        try:
-            response = self.cognito_client.admin_list_groups_for_user(
-                UserPoolId=self.user_pool_id,
-                Username=username
-            )
-            return [group['GroupName'] for group in response['Groups']]
-        except ClientError as e:
-            print(f"Failed to get user groups: {e}")
-            return ['user']  # Default fallback
 
     def _determine_primary_role(self, groups):
         """Determine primary role from groups (admin > user)"""

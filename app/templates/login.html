@@ -35,9 +35,6 @@
             Need an account? <a href="#" onclick="showSignup()">Sign up here</a>
           </small>
         </div>
-        <div class="alert alert-info mt-2">
-          <small><strong>Note:</strong> Regular accounts require MFA. Google login skips this step.</small>
-        </div>
       </div>
     </div>
   </div>
@@ -104,9 +101,6 @@
             <a href="#" onclick="showConfirm()">Have confirmation code?</a>
           </small>
         </div>
-        <div class="alert alert-warning mt-2">
-          <small><strong>Note:</strong> Regular accounts require MFA. Google login is faster!</small>
-        </div>
       </div>
     </div>
   </div>
@@ -153,12 +147,11 @@
 
 {% block scripts %}
 <script>
-// Google OAuth Configuration - REPLACE WITH YOUR VALUES
+// Google OAuth Configuration 
 const COGNITO_DOMAIN = 'ap-southeast-2vt6cuuzgl.auth.ap-southeast-2.amazoncognito.com'; 
 const CLIENT_ID = 'r4jbveuntmkb7s5m6cotd6ere'; 
 const REDIRECT_URI = window.location.origin + '/login';
 
-// Global variables for MFA flow
 let currentMfaSession = null;
 let currentUsername = null;
 
@@ -197,28 +190,17 @@ async function exchangeCodeForTokens(code) {
   try {
     showStatus('Completing Google login...', false);
     
-    // Exchange authorization code for tokens
-    const tokenResponse = await fetch(`https://${COGNITO_DOMAIN}/oauth2/token`, {
+    // Call your server instead of Cognito directly
+    const data = await api('/auth/oauth/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
+      body: JSON.stringify({
         code: code,
-        redirect_uri: REDIRECT_URI,
-        client_id: CLIENT_ID
+        redirect_uri: REDIRECT_URI
       })
     });
     
-    if (!tokenResponse.ok) {
-      throw new Error('Failed to exchange code for tokens');
-    }
-    
-    const tokens = await tokenResponse.json();
-    
     // Store the access token
-    setToken(tokens.access_token);
+    setToken(data.access_token);
     
     showStatus('Google login successful! Redirecting...', false);
     
@@ -344,7 +326,7 @@ async function handleConfirm() {
       body: JSON.stringify({ username, confirmation_code })
     });
 
-    showStatus('Email confirmed! You can now login. Note: MFA is required for all logins.');
+    showStatus('Email confirmed! You can now login.');
     document.getElementById('username').value = username;
     setTimeout(() => showLogin(), 2000);
     

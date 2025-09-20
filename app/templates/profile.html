@@ -1,0 +1,48 @@
+{% extends "template.html" %}
+{% block content %}
+  <h1 class="h4 mb-3">My Profile</h1>
+
+  <div class="card">
+    <div class="card-body text-center">
+      <div id="profileInfo">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading profile...</p>
+      </div>
+
+      <div class="mt-3">
+        <button onclick="logout()" class="btn btn-outline-danger">Logout</button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadProfile() {
+  try {
+    const profile = await api('/auth/profile');
+
+    document.getElementById('profileInfo').innerHTML = `
+      <h5 class="mb-3">${profile.username}</h5>
+      <p class="text-muted">${profile.role} account</p>
+    `;
+
+  } catch (e) {
+    document.getElementById('profileInfo').innerHTML = `
+      <div class="alert alert-danger">
+        <h6>Failed to load profile</h6>
+        <p class="mb-0">${e.message}</p>
+        <a href="/login" class="btn btn-sm btn-primary mt-2">Login Again</a>
+      </div>
+    `;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+{% endblock %}
+
+{% block head_extra %}
+{% endblock %}

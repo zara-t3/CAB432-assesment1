@@ -90,6 +90,10 @@ def create_app():
     def page_jobs():
         return render_template("jobs.html", title="Jobs")
     
+    @app.get("/profile")
+    def page_profile():
+        return render_template("profile.html", title="Profile")
+    
     @app.get("/presigned-test")
     def page_presigned_test():
         return render_template("presigned_upload.html", title="Direct S3 Upload Test")
