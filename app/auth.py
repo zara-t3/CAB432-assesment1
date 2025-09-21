@@ -275,8 +275,11 @@ def exchange_oauth_token():
             return jsonify({"error": "client secret not configured"}), 500
         
         # Server-to-server token exchange
-        cognito_domain = os.getenv('COGNITO_DOMAIN', 'ap-southeast-2vt6cuuzgl.auth.ap-southeast-2.amazoncognito.com')
-        client_id = os.getenv('COGNITO_CLIENT_ID')
+        from .services.parameter_store_service import get_app_config
+        config = get_app_config()
+
+        cognito_domain = config['cognito_domain']
+        client_id = config['cognito_client_id']
         
         token_url = f"https://{cognito_domain}/oauth2/token"
         

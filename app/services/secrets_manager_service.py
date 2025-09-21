@@ -8,7 +8,7 @@ class SecretsManagerService:
         self.region = "ap-southeast-2"
         self.client = boto3.client('secretsmanager', region_name=self.region)
         
-        student_number = os.getenv('STUDENT_NUMBER', 'n11544309')
+        student_number = 'n11544309'
         self.secret_name = f"{student_number}-imagelab-secrets"
         
         self._cached_secrets = None
@@ -28,14 +28,7 @@ class SecretsManagerService:
             return secrets
             
         except ClientError as e:
-            pass
-            pass
-            
-            fallback_secrets = {
-                'cognito_client_secret': os.getenv('COGNITO_CLIENT_SECRET', ''),
-                'jwt_secret': os.getenv('JWT_SECRET', 'devsecret')
-            }
-            return fallback_secrets
+            raise Exception(f"Failed to retrieve secrets from Secrets Manager: {e}")
     
     def get_secret(self, key, default=None):
         secrets = self.get_secrets()

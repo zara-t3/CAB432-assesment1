@@ -29,21 +29,12 @@ def create_app():
         parameter_store_enabled = True
         
     except Exception as e:
-        
-        student_number = os.getenv('STUDENT_NUMBER', 'n11544309')
-        app.config.update({
-            'APP_URL': os.getenv('APP_URL', 'http://localhost:8080'),
-            'S3_BUCKET_NAME': os.getenv('S3_BUCKET_NAME', f"{student_number}-imagelab-bucket"),
-            'DYNAMODB_IMAGES_TABLE': os.getenv('DYNAMODB_IMAGES_TABLE', f"{student_number}-imagelab-images"),
-            'DYNAMODB_JOBS_TABLE': os.getenv('DYNAMODB_JOBS_TABLE', f"{student_number}-imagelab-jobs")
-        })
-        
-        parameter_store_enabled = False
+        raise Exception(f"Failed to load configuration from Parameter Store. Ensure Parameter Store is properly configured: {e}")
 
-    jwt_secret = get_secret('jwt_secret', 'devsecret')
+    jwt_secret = get_secret('jwt_secret')
     app.config["JWT_SECRET"] = jwt_secret
-    
-    app.config["DATA_DIR"] = os.getenv("DATA_DIR", "/data")
+
+    app.config["DATA_DIR"] = "/data"
     app.config['PARAMETER_STORE_ENABLED'] = parameter_store_enabled
 
 
@@ -63,8 +54,8 @@ def create_app():
         return {
             "app_url": app.config.get('APP_URL'),
             "s3_bucket": app.config.get('S3_BUCKET_NAME'),
-            "parameter_store": "enabled" if app.config.get('PARAMETER_STORE_ENABLED') else "fallback",
-            "secrets_manager": "enabled" if app.config.get('SECRETS_MANAGER_ENABLED') else "fallback"
+            "parameter_store": "enabled" if app.config.get('PARAMETER_STORE_ENABLED') else "disabled",
+            "secrets_manager": "enabled" if app.config.get('SECRETS_MANAGER_ENABLED') else "disabled"
         }
  
     @app.get("/")
@@ -114,7 +105,7 @@ def create_app():
 
 def run():
     app = create_app()
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT","8080")))
+    app.run(host="0.0.0.0", port=8080)
 
 if __name__ == "__main__":
     run()

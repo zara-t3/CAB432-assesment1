@@ -1,18 +1,18 @@
 import boto3
 import hmac, hashlib, base64
-import os
 from botocore.exceptions import ClientError
-from .secrets_manager_service import get_secret 
+from .secrets_manager_service import get_secret
+from .parameter_store_service import get_app_config
 
 class CognitoService:
     def __init__(self):
-        self.client_id = os.getenv('COGNITO_CLIENT_ID')
-        self.user_pool_id = os.getenv('COGNITO_USER_POOL_ID')
-        
+        config = get_app_config()
+
+        self.client_id = config['cognito_client_id']
+        self.user_pool_id = config['cognito_user_pool_id']
+
         self.client_secret = get_secret('cognito_client_secret')
-        if not self.client_secret:
-            self.client_secret = os.getenv('COGNITO_CLIENT_SECRET', '')
-        
+
         self.cognito_client = boto3.client("cognito-idp", region_name="ap-southeast-2")
 
     def secret_hash(self, username):
