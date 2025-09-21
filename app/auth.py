@@ -305,7 +305,23 @@ def exchange_oauth_token():
         # Get user info from the access token
         cognito = get_cognito()
         user_info = cognito.verify_token(tokens['access_token'])
-        
+
+        # Move Google users to 'user' group
+        username = user_info.get('username')
+        groups = user_info.get('groups', [])
+
+        # If user is in Google group but not in 'user' group
+        google_groups = [g for g in groups if 'Google' in g]
+        if google_groups and 'user' not in groups:
+            try:
+                # Add to user group
+                cognito.add_user_to_group(username, 'user')
+                # Remove from Google group
+                for google_group in google_groups:
+                    cognito.remove_user_from_group(username, google_group)
+            except Exception:
+                pass
+
         return jsonify({
             "access_token": tokens['access_token'],
             "token_type": tokens.get('token_type', 'Bearer'),

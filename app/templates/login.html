@@ -355,15 +355,13 @@ async function handleLogin() {
     loginBtn.textContent = originalText;
     loginBtn.disabled = false;
 
-    console.log('Login response:', data); // Debug logging
 
     if (data.challenge_required) {
       showMfa(data.session, data.username, data.message);
     } else {
-      // direct login success - this shouldnt happen with MFA enabled
+      // direct login - hope this should not happen :)
       console.log('Direct login success - MFA may not be configured properly');
       setToken(data.access_token);
-      showStatus('Login successful! Redirecting...');
       setTimeout(() => {
         window.location.href = "/upload";
       }, 1000);
@@ -426,25 +424,21 @@ async function handleMfaChallenge() {
     }, 1000);
     
   } catch (e) {
-    // Reset button
     const verifyBtn = document.getElementById('verifyMfaBtn');
     verifyBtn.textContent = 'Verify Code';
     verifyBtn.disabled = false;
 
     showStatus(`MFA verification failed: ${e.message}`, true);
-    // Clear the code field for retry
     document.getElementById('mfaCode').value = '';
     document.getElementById('mfaCode').focus();
   }
 }
 
-// Event Listeners
 document.getElementById("googleLoginBtn").addEventListener("click", loginWithGoogle);
 document.getElementById("signupBtn").addEventListener("click", handleSignup);
 document.getElementById("confirmBtn").addEventListener("click", handleConfirm);
 document.getElementById("verifyMfaBtn").addEventListener("click", handleMfaChallenge);
 
-// Allow Enter key to trigger actions
 document.getElementById("password").addEventListener("keypress", function(e) {
   if (e.key === "Enter") handleLogin();
 });
@@ -457,20 +451,19 @@ document.getElementById("confirmCode").addEventListener("keypress", function(e) 
   if (e.key === "Enter") handleConfirm();
 });
 
-// Auto-format MFA code input (numbers only, max 6 digits)
+
 document.getElementById("mfaCode").addEventListener("input", function(e) {
-  let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-  if (value.length > 6) value = value.substr(0, 6); // Max 6 digits
+  let value = e.target.value.replace(/\D/g, ''); 
+  if (value.length > 6) value = value.substr(0, 6); 
   e.target.value = value;
 });
 
 document.getElementById("confirmCode").addEventListener("input", function(e) {
-  let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-  if (value.length > 6) value = value.substr(0, 6); // Max 6 digits
+  let value = e.target.value.replace(/\D/g, ''); 
+  if (value.length > 6) value = value.substr(0, 6); 
   e.target.value = value;
 });
 
-// Check for OAuth callback on page load
 document.addEventListener('DOMContentLoaded', checkOAuthCallback);
 </script>
 {% endblock %}

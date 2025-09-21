@@ -68,9 +68,5 @@ def face_blur_and_variants(
         "original_size": [W, H],
         "processing_time": time.time()
     }
-    
-    metadata_path = os.path.join(out_dir, "processing_metadata.json")
-    with open(metadata_path, 'w') as f:
-        json.dump(metadata, f, indent=2)
 
-    return outputs
+    return outputs, metadata

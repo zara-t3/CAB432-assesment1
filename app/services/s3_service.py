@@ -92,11 +92,7 @@ class S3Service:
                 s3_key,
                 ExtraArgs={
                     'ContentType': 'image/jpeg',
-                    'Metadata': {
-                        'user': user,
-                        'image_id': image_id,
-                        'uploaded_at': datetime.utcnow().isoformat()
-                    }
+                  
                 }
             )
             
@@ -117,11 +113,7 @@ class S3Service:
                 s3_key,
                 ExtraArgs={
                     'ContentType': self._get_content_type(filename),
-                    'Metadata': {
-                        'user': user,
-                        'image_id': image_id,
-                        'processed_at': datetime.utcnow().isoformat()
-                    }
+                
                 }
             )
             

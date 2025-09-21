@@ -41,6 +41,10 @@ class DynamoDBService:
                     "s3_key": {"S": s3_key},
                     "processed_s3_key": {"S": ""},
                     "thumb_s3_key": {"S": ""},
+                    "faces_detected": {"N": "0"},
+                    "original_width": {"N": "0"},
+                    "original_height": {"N": "0"},
+                    "processing_time": {"S": ""},
                     "created_at": {"S": datetime.utcnow().isoformat()},
                     "status": {"S": "uploaded"}
                 }
@@ -54,6 +58,10 @@ class DynamoDBService:
                 's3_key': s3_key,
                 'processed_s3_key': None,
                 'thumb_s3_key': None,
+                'faces_detected': 0,
+                'original_width': 0,
+                'original_height': 0,
+                'processing_time': '',
                 'created_at': datetime.utcnow().isoformat(),
                 'status': 'uploaded'
             }
@@ -82,6 +90,10 @@ class DynamoDBService:
                 's3_key': item.get('s3_key', {}).get('S', ''),
                 'processed_s3_key': item.get('processed_s3_key', {}).get('S', '') or None,
                 'thumb_s3_key': item.get('thumb_s3_key', {}).get('S', '') or None,
+                'faces_detected': int(item.get('faces_detected', {}).get('N', '0')),
+                'original_width': int(item.get('original_width', {}).get('N', '0')),
+                'original_height': int(item.get('original_height', {}).get('N', '0')),
+                'processing_time': item.get('processing_time', {}).get('S', ''),
                 'created_at': item['created_at']['S'],
                 'status': item['status']['S']
             }
@@ -187,6 +199,28 @@ class DynamoDBService:
             pass
             raise
 
+    def update_processing_metadata(self, image_id: str, faces_detected: int,
+                                 original_width: int, original_height: int, processing_time: str):
+        try:
+            self.dynamodb.update_item(
+                TableName=self.images_table_name,
+                Key={
+                    "qut-username": {"S": self.qut_username},
+                    "image_id": {"S": image_id}
+                },
+                UpdateExpression="SET faces_detected = :faces, original_width = :width, original_height = :height, processing_time = :time",
+                ExpressionAttributeValues={
+                    ":faces": {"N": str(faces_detected)},
+                    ":width": {"N": str(original_width)},
+                    ":height": {"N": str(original_height)},
+                    ":time": {"S": processing_time}
+                }
+            )
+            pass
+        except ClientError as e:
+            pass
+            raise
+
     def _convert_item_to_dict(self, item: Dict) -> Dict:
         return {
             'id': item['image_id']['S'],
@@ -195,6 +229,10 @@ class DynamoDBService:
             's3_key': item.get('s3_key', {}).get('S', ''),
             'processed_s3_key': item.get('processed_s3_key', {}).get('S', '') or None,
             'thumb_s3_key': item.get('thumb_s3_key', {}).get('S', '') or None,
+            'faces_detected': int(item.get('faces_detected', {}).get('N', '0')),
+            'original_width': int(item.get('original_width', {}).get('N', '0')),
+            'original_height': int(item.get('original_height', {}).get('N', '0')),
+            'processing_time': item.get('processing_time', {}).get('S', ''),
             'created_at': item['created_at']['S'],
             'status': item['status']['S']
         }

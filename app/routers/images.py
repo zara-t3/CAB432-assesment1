@@ -172,38 +172,33 @@ def get_metadata(img_id):
             return jsonify({"error": "not found"}), 404
         
         
+        # Get job info for blur_strength and extra_passes
+        job_data = None
+        try:
+            if g.user["role"] == "admin":
+                jobs = db.list_all_jobs(limit=100)
+            else:
+                jobs = db.list_jobs_for_user(g.user["username"], limit=100)
+
+            # Find the most recent job for this image
+            image_jobs = [job for job in jobs if job.get('image_id') == img_id]
+            if image_jobs:
+                job_data = image_jobs[0]  # Most recent due to sorting
+        except:
+            pass
+
         metadata = {
             "image_id": rec["id"],
             "name": rec["name"],
             "owner": rec["owner"],
             "created_at": rec["created_at"],
             "status": rec["status"],
-            "faces_detected": 0,
-            "blur_strength": 12,
-            "extra_passes": 0,
-            "original_size": [1920, 1080],
-            "processing_time": rec["created_at"]
+            "faces_detected": rec.get("faces_detected", 0),
+            "blur_strength": job_data.get("blur_strength", 12) if job_data else 12,
+            "extra_passes": job_data.get("extra_passes", 0) if job_data else 0,
+            "original_size": [rec.get("original_width", 1920), rec.get("original_height", 1080)],
+            "processing_time": rec.get("processing_time", rec["created_at"])
         }
-        
-    
-        if rec["processed_s3_key"]:
-            try:
-                s3 = get_s3_service()
-                metadata_key = f"images/{rec['owner']}/{img_id}/processed/processing_metadata.json"
-                metadata_data = s3.download_image(metadata_key)
-                import json
-                processing_metadata = json.loads(metadata_data.decode('utf-8'))
-                
-               
-                metadata.update({
-                    "faces_detected": processing_metadata.get("faces_detected", 0),
-                    "blur_strength": processing_metadata.get("blur_strength", 12),
-                    "extra_passes": processing_metadata.get("extra_passes", 0),
-                    "original_size": processing_metadata.get("original_size", [1920, 1080]),
-                    "processing_time": processing_metadata.get("processing_time", rec["created_at"])
-                })
-            except Exception as e:
-                pass
         
         return jsonify(metadata)
         

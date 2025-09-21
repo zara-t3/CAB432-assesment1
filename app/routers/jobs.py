@@ -55,9 +55,9 @@ def create_job():
             #
             with tempfile.TemporaryDirectory() as temp_output_dir:
                
-                outputs = face_blur_and_variants(
-                    temp_input_path, 
-                    temp_output_dir, 
+                outputs, processing_metadata = face_blur_and_variants(
+                    temp_input_path,
+                    temp_output_dir,
                     blur_strength=blur_strength,
                     extra_passes=extra_passes
                 )
@@ -74,9 +74,6 @@ def create_job():
                         's3_key': s3_key
                     })
                 
-                metadata_file = os.path.join(temp_output_dir, "processing_metadata.json")
-                if os.path.exists(metadata_file):
-                    metadata_s3_key = s3.upload_processed_image(metadata_file, rec['owner'], img_id, "processing_metadata.json")
            
                 primary_processed = next(
                     (item for item in processed_s3_keys if item['name'] == "fhd_1080.webp"), 
@@ -85,6 +82,15 @@ def create_job():
                 
                 if primary_processed:
                     db.update_processed_s3_key(img_id, primary_processed['s3_key'])
+
+                # Store processing metadata in database
+                db.update_processing_metadata(
+                    img_id,
+                    processing_metadata['faces_detected'],
+                    processing_metadata['original_size'][0],  # width
+                    processing_metadata['original_size'][1],  # height
+                    str(processing_metadata['processing_time'])
+                )
 
         finally:
             os.unlink(temp_input_path)

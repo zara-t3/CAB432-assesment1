@@ -31,7 +31,6 @@ class SecretsManagerService:
             pass
             pass
             
-            # Fallback to environment variables
             fallback_secrets = {
                 'cognito_client_secret': os.getenv('COGNITO_CLIENT_SECRET', ''),
                 'jwt_secret': os.getenv('JWT_SECRET', 'devsecret')
@@ -39,11 +38,10 @@ class SecretsManagerService:
             return fallback_secrets
     
     def get_secret(self, key, default=None):
-        """Get a specific secret by key"""
         secrets = self.get_secrets()
         return secrets.get(key, default)
 
-# Global instance
+
 _secrets_manager = None
 
 def get_secrets_manager():
@@ -53,6 +51,5 @@ def get_secrets_manager():
     return _secrets_manager
 
 def get_secret(key, default=None):
-    """Convenience function to get a secret"""
     secrets_manager = get_secrets_manager()
     return secrets_manager.get_secret(key, default)

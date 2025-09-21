@@ -49,11 +49,11 @@ a:hover, .link-primary:hover{ color:var(--blush-pink); }
   background:var(--chocolate-brown); color:#fff; border-color:var(--chocolate-brown);
 }
 
-/* Small link-style buttons you used in tables */
+
 .btn-link{ color:var(--deep-rose); text-decoration:none; }
 .btn-link:hover{ color:var(--blush-pink); text-decoration:underline; }
 
-/* ===== Forms ===== */
+
 .form-label{ color:var(--chocolate-brown); font-weight:600; }
 .form-control, .form-select{
   border-color:var(--chocolate-brown); color:var(--chocolate-brown);
@@ -63,16 +63,15 @@ a:hover, .link-primary:hover{ color:var(--blush-pink); }
   border-color:var(--deep-rose); box-shadow:0 0 0 .2rem rgba(236,64,122,.15);
 }
 
-/* Search input groups you showed */
+
 .input-group-text{ background:var(--soft-pink); color:var(--chocolate-brown); border-color:var(--chocolate-brown); }
 
-/* ===== Tables ===== */
 .table{ color:var(--chocolate-brown); }
 .table-striped > tbody > tr:nth-of-type(odd){ --bs-table-accent-bg: rgba(244,143,177,.08); }
 .table thead th{ color:var(--chocolate-brown); border-bottom-color:rgba(110,38,14,.2); }
 .table td, .table th{ border-color:rgba(110,38,14,.15); }
 
-/* ===== Cards ===== */
+
 .card{
   border:1px solid rgba(164,73,42,.2);
   border-radius:10px;
@@ -83,38 +82,33 @@ a:hover, .link-primary:hover{ color:var(--blush-pink); }
 .card-img-top{ height:180px; object-fit:cover; }
 .card-body{ background:var(--neutral-off-white); }
 
-/* ===== Alerts & badges ===== */
 .alert{
   background:var(--soft-pink); color:var(--chocolate-brown);
   border:1px solid var(--deep-rose);
 }
 .badge{ background:var(--deep-rose); }
-.badge.bg-success{ background:var(--deep-rose) !important; } /* rebrand "processed/optimized" */
+.badge.bg-success{ background:var(--deep-rose) !important; } 
 
-/* ===== Dropdowns (global) ===== */
+
 .dropdown-menu{ background:var(--soft-pink); border-color:rgba(110,38,14,.2); }
 .dropdown-item{ color:var(--chocolate-brown); }
 .dropdown-item:hover{ background:var(--blush-pink); color:#fff; }
 
-/* ===== Modal ===== */
 .modal-content{ border:none; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,.25); }
 .modal-header{ background:var(--soft-pink); color:#fff; border-bottom:none; }
 .modal-footer{ border-top:none; }
 
-/* ===== Pagination ===== */
+
 .page-link{ color:var(--deep-rose); border-color:rgba(110,38,14,.25); }
 .page-link:hover{ color:#fff; background:var(--blush-pink); border-color:var(--blush-pink); }
 .page-item.active .page-link{ background:var(--deep-rose); border-color:var(--deep-rose); }
 
-/* ===== Footer ===== */
 .footer-custom{ background:var(--soft-pink); color:#fff; }
 .footer-custom .footer-link{ color:#fff; }
 .footer-custom .footer-link:hover{ color:var(--deep-rose); }
 
-/* ===== Utilities you used in templates ===== */
 .text-muted{ color:rgba(110,38,14,.65) !important; }
 hr, .custom-hr{ border:0; height:1px; background:rgba(110,38,14,.12); }
 
 
-/* Keep Bootstrap spacing/gaps but harmonize colors */
 .btn-group .dropdown-toggle{ border-color:var(--chocolate-brown); }
