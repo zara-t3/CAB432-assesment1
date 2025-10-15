@@ -267,14 +267,14 @@ def exchange_oauth_token():
         return jsonify({"error": "code and redirect_uri required"}), 400
     
     try:
-        # Get client secret from Secrets Manager (secure)
+        # get the client secret from secrets manager 
         from .services.secrets_manager_service import get_secret
         client_secret = get_secret('cognito_client_secret')
         
         if not client_secret:
             return jsonify({"error": "client secret not configured"}), 500
         
-        # Server-to-server token exchange
+    
         from .services.parameter_store_service import get_app_config
         config = get_app_config()
 
@@ -291,7 +291,6 @@ def exchange_oauth_token():
             'client_secret': client_secret
         }
         
-        # Make secure server-to-server request
         response = requests.post(
             token_url,
             data=token_data,

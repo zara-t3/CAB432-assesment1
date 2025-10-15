@@ -29,7 +29,7 @@ Overview
 - **Why is this service suited to this data?:** S3 is designed for large binary files like images, provides high durability, and supports direct client uploads via pre-signed URLs
 - **Why is are the other services used not suitable for this data?:** DynamoDB has item size limits which makes it unsuitable for large binary files, RDS is not optimised for blob storage, EBS/EFS would require server side processing for all uploads
 - **Bucket/instance/table name:** n11544309-imagelab-bucket
-- **Video timestamp:** [Your timestamp]
+- **Video timestamp:** 0:10
 - **Relevant files:**
     - app/services/s3_service.py
     - app/routers/images.py
@@ -41,7 +41,7 @@ Overview
 - **Why is this service suited to this data?:** DynamoDB excels at fast key-value lookups for metadata, scales automatically, and handles the structured data with predictable access patterns
 - **Why is are the other services used not suitable for this data?:** S3 is not queryable for metadata searches, RDS would be overkill for simple key value operations, EBS/EFS require application level data management
 - **Bucket/instance/table name:** n11544309-imagelab-images, n11544309-imagelab-jobs
-- **Video timestamp:** [Your timestamp]
+- **Video timestamp:** 1:10
 - **Relevant files:**
     - app/services/dynamodb_service.py
     - app/routers/images.py
@@ -53,7 +53,7 @@ Overview
 ### S3 Pre-signed URLs
 
 - **S3 Bucket names:** n11544309-imagelab-bucket
-- **Video timestamp:** [Your timestamp]
+- **Video timestamp:** 1:50
 - **Relevant files:**
     - app/services/s3_service.py 
     - app/routers/images.py 
@@ -66,7 +66,7 @@ Overview
 
 - **What data is stored within your application that is not stored in cloud data services?:** No persistent data is stored within the application. Temporary files are created during image processing but are immediately uploaded to S3 and then deleted.
 - **Why is this data not considered persistent state?:** Temporary processing files are temporary and can be recreated from the original S3 images if needed. All persistent state like metadata and processed images are stored in cloud services.
-- **How does your application ensure data consistency if the app suddenly stops?:** All database operations are atomic, S3 uploads are completed before DynamoDB records are created, and temporary files are cleaned up automatically by the OS if the application stops unexpectedly.
+- **How does your application ensure data consistency if the app suddenly stops?:** All database operations are atomic, S3 uploads are completed before DynamoDB records are created, and temporary files are cleaned up automatically by the OS if the application stops unexpectedly
 - **Relevant files:**
     - app/services/s3_service.py
     - app/services/dynamodb_service.py
@@ -77,9 +77,9 @@ Overview
 
 ### Core - Authentication with Cognito
 
-- **User pool name:** [Your Cognito User Pool name/ID]
-- **How are authentication tokens handled by the client?:** JWT access tokens are stored in browser localStorage and sent as Bearer tokens in authorsation headers for API requests
-- **Video timestamp:** [Your timestamp]
+- **User pool name:** n11544309-a2-pool
+- **How are authentication tokens handled by the client?:** JWT access tokens are stored in browser localStorage and sent as Bearer tokens in authorization headers for API requests
+- **Video timestamp:** 2:30
 - **Relevant files:**
     - app/auth.py
     - app/services/cognito_service.py
@@ -89,7 +89,7 @@ Overview
 ### Cognito multi-factor authentication
 
 - **What factors are used for authentication:** Password and email based one time code
-- **Video timestamp:** [Your timestamp]
+- **Video timestamp:** 3:15
 - **Relevant files:**
     - app/auth.py 
     - app/services/cognito_service.py 
@@ -98,7 +98,7 @@ Overview
 ### Cognito federated identities
 
 - **Identity providers used:** Google OAuth
-- **Video timestamp:** [Your timestamp]
+- **Video timestamp:** 3:40
 - **Relevant files:**
     - app/auth.py 
     - app/services/cognito_service.py 
@@ -106,35 +106,38 @@ Overview
 
 ### Cognito groups
 
-- **How are groups used to set permissions?:** Users are assigned to 'user' or 'admin' groups. Admin users are able to view all images and jobs from all users but regular users can only access their own content
-- **Video timestamp:** [Your timestamp]
+- **How are groups used to set permissions?:** Users are assigned to 'user' or 'admin' groups. Admin users can view all images and jobs from all users, while regular users can only access their own content. 
+- **Video timestamp:** 4:00
 - **Relevant files:**
-    - app/auth.py 
-    - app/services/cognito_service.py 
-    - app/routers/images.py 
+    - app/auth.py
+    - app/services/cognito_service.py
+    - app/routers/images.py
     - app/routers/jobs.py 
 
 ### Core - DNS with Route53
 
 - **Subdomain:** n11544309.cab432.com
-- **Video timestamp:** [Your timestamp]
+- **Video timestamp:** 4:50
 
 ### Parameter store
 
-- **Parameter names:** /n11544309/imagelab/app-url, /n11544309/imagelab/s3-bucket-name, /n11544309/imagelab/dynamodb-images-table, /n11544309/imagelab/dynamodb-jobs-table
-- **Video timestamp:** [Your timestamp]
+- **Parameter names:** /n11544309/imagelab/app-url, /n11544309/imagelab/s3-bucket-name, /n11544309/imagelab/dynamodb-images-table, /n11544309/imagelab/dynamodb-jobs-table, /n11544309/imagelab/cognito-client-id, /n11544309/imagelab/cognito-user-pool-id, /n11544309/imagelab/cognito-domain
+- **Video timestamp:** 5:10
 - **Relevant files:**
     - app/services/parameter_store_service.py
-    - app/main.py 
+    - app/main.py
+    - app/services/cognito_service.py
+    - app/auth.py 
 
 ### Secrets manager
 
-- **Secrets names:** n11544309-imagelab-secrets
-- **Video timestamp:** [Your timestamp]
+- **Secrets names:** n11544309-imagelab-secrets (contains: cognito_client_secret, jwt_secret)
+- **Video timestamp:** 6:55
 - **Relevant files:**
     - app/services/secrets_manager_service.py
     - app/services/cognito_service.py
     - app/main.py
+    - app/auth.py
 
 ### Infrastructure as code
 - Not attempted

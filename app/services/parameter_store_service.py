@@ -12,7 +12,7 @@ class ParameterStoreService:
         
 
     def get_app_config(self):
-        # Define all required parameters
+        # define all required parameters
         required_param_names = [
             'app-url', 's3-bucket-name', 'dynamodb-images-table',
             'dynamodb-jobs-table', 'cognito-client-id',
