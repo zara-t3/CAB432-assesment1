@@ -1,12 +1,18 @@
-import os, uuid, time, tempfile
+import os, uuid, json
 from datetime import datetime
 from flask import Blueprint, request, jsonify, g, current_app
+import boto3
 from ..auth import auth_required
 from ..services.dynamodb_service import get_db_service
 from ..services.s3_service import get_s3_service
-from ..services.processing import face_blur_and_variants
 
 jobs_bp = Blueprint("jobs", __name__)
+
+def get_sqs_queue_url():
+    """Get SQS queue URL from Parameter Store"""
+    ssm = boto3.client('ssm')
+    response = ssm.get_parameter(Name='/n11544309/imagelab/sqs-queue-url')
+    return response['Parameter']['Value']
 
 @jobs_bp.post("")
 @auth_required
@@ -32,8 +38,8 @@ def create_job():
             return jsonify({"error": "image not found"}), 404
 
         job_id = str(uuid.uuid4())
-        
-        # create job record
+
+        # create job record with "queued" status
         job_record = db.create_job_record(
             job_id=job_id,
             owner=rec["owner"],
@@ -41,90 +47,41 @@ def create_job():
             extra_passes=extra_passes,
             blur_strength=blur_strength
         )
-        
-        pass
-        start = time.time()
 
-       
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_input:
-            image_data = s3.download_image(rec["s3_key"])
-            temp_input.write(image_data)
-            temp_input_path = temp_input.name
+        # get SQS queue URL from Parameter Store
+        queue_url = get_sqs_queue_url()
 
-        try:
-            #
-            with tempfile.TemporaryDirectory() as temp_output_dir:
-               
-                outputs, processing_metadata = face_blur_and_variants(
-                    temp_input_path,
-                    temp_output_dir,
-                    blur_strength=blur_strength,
-                    extra_passes=extra_passes
-                )
-                processed_s3_keys = []
-                for output in outputs:
-                    s3_key = s3.upload_processed_image(
-                        output['path'], 
-                        rec['owner'], 
-                        img_id, 
-                        output['name']
-                    )
-                    processed_s3_keys.append({
-                        'name': output['name'],
-                        's3_key': s3_key
-                    })
-                
-           
-                primary_processed = next(
-                    (item for item in processed_s3_keys if item['name'] == "fhd_1080.webp"), 
-                    processed_s3_keys[0] if processed_s3_keys else None
-                )
-                
-                if primary_processed:
-                    db.update_processed_s3_key(img_id, primary_processed['s3_key'])
+        # send message to SQS
+        sqs = boto3.client('sqs')
+        message_body = {
+            "job_id": job_id,
+            "image_id": img_id,
+            "owner": rec["owner"],
+            "s3_key": rec["s3_key"],
+            "extra_passes": extra_passes,
+            "blur_strength": blur_strength
+        }
 
-                # Store processing metadata in database
-                db.update_processing_metadata(
-                    img_id,
-                    processing_metadata['faces_detected'],
-                    processing_metadata['original_size'][0],  # width
-                    processing_metadata['original_size'][1],  # height
-                    str(processing_metadata['processing_time'])
-                )
-
-        finally:
-            os.unlink(temp_input_path)
-
-        duration_ms = int((time.time() - start) * 1000)
-
-
-        db.update_job_completion(
-            job_id=job_id,
-            duration_ms=duration_ms,
-            outputs=processed_s3_keys,
-            status="done"
+        sqs.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message_body)
         )
 
-        pass
-        
+        # return immediately with queued status
         return jsonify({
             "job_id": job_id,
-            "status": "done",
-            "duration_ms": duration_ms,
-            "outputs": []  
+            "status": "queued"
         })
         
     except Exception as e:
-        pass
-        
         try:
             if 'job_id' in locals():
                 db = get_db_service()
                 db.update_job_completion(job_id, 0, [], "failed")
         except:
             pass
-            
-        return jsonify({"error": f"Job processing failed: {str(e)}"}), 500
+
+        return jsonify({"error": f"Failed to queue job: {str(e)}"}), 500
 
 @jobs_bp.get("")
 @auth_required

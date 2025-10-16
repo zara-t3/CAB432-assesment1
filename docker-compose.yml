@@ -1,12 +1,12 @@
 version: "3.9"
 
 services:
-  app:
+  web:
     image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11544309-a1-repo:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: imagelab
+    container_name: imagelab-web
     environment:
       JWT_SECRET: "${JWT_SECRET}"
       DATA_DIR: "/data"
@@ -16,8 +16,28 @@ services:
       COGNITO_USER_POOL_ID: "${COGNITO_USER_POOL_ID}"
       COGNITO_CLIENT_SECRET: "${COGNITO_CLIENT_SECRET}"
       COGNITO_DOMAIN: "ap-southeast-2vt6cuuzgl.auth.ap-southeast-2.amazoncognito.com"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_SESSION_TOKEN: "${AWS_SESSION_TOKEN}"
+      AWS_DEFAULT_REGION: "ap-southeast-2"
     volumes:
       - ./data:/data
     ports:
-      - "${HOST_PORT}:${APP_PORT}"  
+      - "${HOST_PORT}:${APP_PORT}"
+    restart: unless-stopped
+
+  processor:
+    build:
+      context: ./processing-service
+      dockerfile: Dockerfile
+    container_name: imagelab-processor
+    environment:
+      QUEUE_URL: "${QUEUE_URL}"
+      S3_BUCKET: "${S3_BUCKET}"
+      DYNAMODB_IMAGES_TABLE: "${DYNAMODB_IMAGES_TABLE}"
+      DYNAMODB_JOBS_TABLE: "${DYNAMODB_JOBS_TABLE}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_SESSION_TOKEN: "${AWS_SESSION_TOKEN}"
+      AWS_DEFAULT_REGION: "ap-southeast-2"
     restart: unless-stopped

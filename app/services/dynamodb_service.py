@@ -237,7 +237,7 @@ class DynamoDBService:
             'status': item['status']['S']
         }
 
-    def create_job_record(self, job_id: str, owner: str, image_id: str, 
+    def create_job_record(self, job_id: str, owner: str, image_id: str,
                          extra_passes: int, blur_strength: int = 12) -> Dict:
         try:
             response = self.dynamodb.put_item(
@@ -249,20 +249,20 @@ class DynamoDBService:
                     "image_id": {"S": image_id},
                     "extra_passes": {"N": str(extra_passes)},
                     "blur_strength": {"N": str(blur_strength)},
-                    "status": {"S": "pending"},
+                    "status": {"S": "queued"},
                     "duration_ms": {"N": "0"},
                     "created_at": {"S": datetime.utcnow().isoformat()}
                 }
             )
             pass
-            
+
             return {
                 'id': job_id,
                 'owner': owner,
                 'image_id': image_id,
                 'extra_passes': extra_passes,
                 'blur_strength': blur_strength,
-                'status': 'pending',
+                'status': 'queued',
                 'duration_ms': None,
                 'outputs': [],
                 'created_at': datetime.utcnow().isoformat()
