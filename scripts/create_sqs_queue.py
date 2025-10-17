@@ -30,6 +30,9 @@ def create_dlq(sqs_client):
             QueueName=DLQ_NAME,
             Attributes={
                 'MessageRetentionPeriod': str(MESSAGE_RETENTION),
+            },
+            tags={
+                'qut-username': 'n11544309@qut.edu.au'
             }
         )
 
@@ -43,6 +46,7 @@ def create_dlq(sqs_client):
         )
         dlq_arn = dlq_attributes['Attributes']['QueueArn']
         print(f"✓ DLQ ARN: {dlq_arn}")
+        print(f"✓ Tagged with qut-username: n11544309@qut.edu.au")
 
         return dlq_url, dlq_arn
 
@@ -57,6 +61,17 @@ def create_dlq(sqs_client):
             dlq_arn = dlq_attributes['Attributes']['QueueArn']
             print(f"✓ DLQ URL: {dlq_url}")
             print(f"✓ DLQ ARN: {dlq_arn}")
+
+            # Add tags to existing queue
+            try:
+                sqs_client.tag_queue(
+                    QueueUrl=dlq_url,
+                    Tags={'qut-username': 'n11544309@qut.edu.au'}
+                )
+                print(f"✓ Tagged with qut-username: n11544309@qut.edu.au")
+            except Exception as tag_error:
+                print(f"⚠ Warning: Could not add tags: {tag_error}")
+
             return dlq_url, dlq_arn
         else:
             print(f"✗ Error creating DLQ: {e}")
@@ -80,6 +95,9 @@ def create_main_queue(sqs_client, dlq_arn):
                 'VisibilityTimeout': str(VISIBILITY_TIMEOUT),
                 'MessageRetentionPeriod': str(MESSAGE_RETENTION),
                 'RedrivePolicy': json.dumps(redrive_policy)
+            },
+            tags={
+                'qut-username': 'n11544309@qut.edu.au'
             }
         )
 
@@ -88,6 +106,7 @@ def create_main_queue(sqs_client, dlq_arn):
         print(f"✓ Visibility timeout: {VISIBILITY_TIMEOUT} seconds (5 minutes)")
         print(f"✓ Message retention: {MESSAGE_RETENTION} seconds (4 days)")
         print(f"✓ Max receive count: {MAX_RECEIVE_COUNT}")
+        print(f"✓ Tagged with qut-username: n11544309@qut.edu.au")
 
         return queue_url
 
@@ -108,6 +127,16 @@ def create_main_queue(sqs_client, dlq_arn):
                 }
             )
             print("✓ Queue attributes updated")
+
+            # Add tags to existing queue
+            try:
+                sqs_client.tag_queue(
+                    QueueUrl=queue_url,
+                    Tags={'qut-username': 'n11544309@qut.edu.au'}
+                )
+                print(f"✓ Tagged with qut-username: n11544309@qut.edu.au")
+            except Exception as tag_error:
+                print(f"⚠ Warning: Could not add tags: {tag_error}")
 
             return queue_url
         else:

@@ -32,19 +32,34 @@ class ProcessingService:
         self.qut_username = "n11544309@qut.edu.au"
         self.student_number = "n11544309"
 
-        # Load configuration from environment variables
-        self.queue_url = os.environ.get('QUEUE_URL')
-        self.s3_bucket = os.environ.get('S3_BUCKET', f'{self.student_number}-imagelab-bucket')
-        self.images_table = os.environ.get('DYNAMODB_IMAGES_TABLE', f'{self.student_number}-imagelab-images')
-        self.jobs_table = os.environ.get('DYNAMODB_JOBS_TABLE', f'{self.student_number}-imagelab-jobs')
-
-        if not self.queue_url:
-            raise ValueError("QUEUE_URL environment variable is required")
-
         # Initialize AWS clients
         self.sqs = boto3.client('sqs', region_name='ap-southeast-2')
         self.s3 = boto3.client('s3', region_name='ap-southeast-2')
         self.dynamodb = boto3.client('dynamodb', region_name='ap-southeast-2')
+        self.ssm = boto3.client('ssm', region_name='ap-southeast-2')
+
+        # Load configuration from environment variables or Parameter Store
+        self.queue_url = os.environ.get('QUEUE_URL')
+        if not self.queue_url:
+            # Try to get from Parameter Store
+            try:
+                response = self.ssm.get_parameter(Name=f'/{self.student_number}/imagelab/sqs-queue-url')
+                self.queue_url = response['Parameter']['Value']
+            except Exception as e:
+                raise ValueError("QUEUE_URL not found in environment or Parameter Store")
+
+        # Get S3 bucket from env or Parameter Store
+        self.s3_bucket = os.environ.get('S3_BUCKET')
+        if not self.s3_bucket:
+            try:
+                response = self.ssm.get_parameter(Name=f'/{self.student_number}/imagelab/s3-bucket-name')
+                self.s3_bucket = response['Parameter']['Value']
+            except Exception:
+                self.s3_bucket = f'{self.student_number}-imagelab-bucket'
+
+        # Get DynamoDB table names from env or use defaults
+        self.images_table = os.environ.get('DYNAMODB_IMAGES_TABLE', f'{self.student_number}-imagelab-images')
+        self.jobs_table = os.environ.get('DYNAMODB_JOBS_TABLE', f'{self.student_number}-imagelab-jobs')
 
         logger.info(f"Initialized ProcessingService")
         logger.info(f"Queue URL: {self.queue_url}")
