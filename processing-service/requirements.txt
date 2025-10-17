@@ -1,5 +1,5 @@
 boto3==1.35.*
 pillow==10.*
-opencv-python-headless==4.10.*
+opencv-python==4.10.*
 mtcnn==0.1.1
 tensorflow-cpu==2.15.*
