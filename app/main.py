@@ -23,7 +23,8 @@ def create_app():
             'APP_URL': config['app_url'],
             'S3_BUCKET_NAME': config['s3_bucket_name'],
             'DYNAMODB_IMAGES_TABLE': config['dynamodb_images_table'],
-            'DYNAMODB_JOBS_TABLE': config['dynamodb_jobs_table']
+            'DYNAMODB_JOBS_TABLE': config['dynamodb_jobs_table'],
+            'CLOUDFRONT_DOMAIN': config['cloudfront_domain']
         })
         
         parameter_store_enabled = True

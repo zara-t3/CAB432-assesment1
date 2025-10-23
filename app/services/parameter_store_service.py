@@ -19,7 +19,14 @@ class ParameterStoreService:
             'cognito-user-pool-id', 'cognito-domain'
         ]
 
+        # Optional parameters with defaults
+        optional_param_names = [
+            'cloudfront-domain'
+        ]
+
         config = {}
+
+        # Get required parameters
         for param_name in required_param_names:
             full_param_name = f"{self.prefix}/{param_name}"
             try:
@@ -28,6 +35,17 @@ class ParameterStoreService:
                 config[clean_name] = response['Parameter']['Value']
             except Exception as e:
                 raise Exception(f"Failed to get parameter {full_param_name}: {e}")
+
+        # Get optional parameters
+        for param_name in optional_param_names:
+            full_param_name = f"{self.prefix}/{param_name}"
+            try:
+                response = self.ssm.get_parameter(Name=full_param_name)
+                clean_name = param_name.replace("-", "_")
+                config[clean_name] = response['Parameter']['Value']
+            except:
+                # Optional parameter not found, skip it
+                pass
 
         required_params = ['app_url', 's3_bucket_name', 'dynamodb_images_table', 'dynamodb_jobs_table', 'cognito_client_id', 'cognito_user_pool_id', 'cognito_domain']
         missing_params = [param for param in required_params if param not in config]
@@ -42,7 +60,8 @@ class ParameterStoreService:
             'dynamodb_jobs_table': config['dynamodb_jobs_table'],
             'cognito_client_id': config['cognito_client_id'],
             'cognito_user_pool_id': config['cognito_user_pool_id'],
-            'cognito_domain': config['cognito_domain']
+            'cognito_domain': config['cognito_domain'],
+            'cloudfront_domain': config.get('cloudfront_domain', 'd2vmmt2bt8b124.cloudfront.net')
         }
 
         return app_config

@@ -1,6 +1,7 @@
 import os, uuid, mimetypes, time
 from datetime import datetime
-from flask import Blueprint, current_app, request, jsonify, send_file, g, Response
+from urllib.parse import quote, urlencode
+from flask import Blueprint, current_app, request, jsonify, send_file, g, Response, redirect
 from PIL import Image
 from ..auth import auth_required
 from ..services.dynamodb_service import get_db_service
@@ -109,51 +110,57 @@ def get_file(img_id):
     version = request.args.get("version", "original")
     download = request.args.get("download") in ("1", "true", "yes")
 
+    # CloudFront distribution domain
+    CLOUDFRONT_DOMAIN = current_app.config.get('CLOUDFRONT_DOMAIN', 'd2vmmt2bt8b124.cloudfront.net')
+
     try:
         db = get_db_service()
         rec = db.get_image(img_id)
-        
+
         if not rec:
             return jsonify({"error": "not found"}), 404
-            
+
         if g.user["role"] != "admin" and rec["owner"] != g.user["username"]:
             return jsonify({"error": "not found"}), 404
 
         s3 = get_s3_service()
-        
 
+        # Determine which S3 key to use based on version
         if version == "thumb":
             s3_key = rec["thumb_s3_key"]
             if not s3_key:
-                # Create thumbnail
+                # Create thumbnail on-demand
                 s3_key = s3.create_thumbnail(rec["s3_key"], rec["owner"], img_id)
                 db.update_thumb_s3_key(img_id, s3_key)
         elif version == "processed":
             s3_key = rec["processed_s3_key"]
-        else:  
+        else:
             s3_key = rec["s3_key"]
-        
+
+        # Check if s3_key exists
         if not s3_key:
             return jsonify({"error": "file not ready"}), 404
 
-        # Download from S3 
-        try:
-            image_data = s3.download_image(s3_key)
-            
-            filename = s3_key.split('/')[-1]
-            mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-
-            response = Response(image_data, mimetype=mime)
-            
-            if download:
-                response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-            
-            return response
-            
-        except Exception as e:
-            pass
+        # Verify file exists in S3 before redirecting
+        if not s3.verify_object_exists(s3_key):
             return jsonify({"error": "file not available"}), 404
-        
+
+        # Build CloudFront URL
+        # URL encode the s3_key to handle special characters
+        encoded_s3_key = quote(s3_key, safe='/')
+        cloudfront_url = f"https://{CLOUDFRONT_DOMAIN}/{encoded_s3_key}"
+
+        # Handle download parameter using CloudFront's response-content-disposition
+        if download:
+            filename = s3_key.split('/')[-1]
+            query_params = {
+                'response-content-disposition': f'attachment; filename="{filename}"'
+            }
+            cloudfront_url = f"{cloudfront_url}?{urlencode(query_params)}"
+
+        # Redirect to CloudFront URL
+        return redirect(cloudfront_url, code=302)
+
     except Exception as e:
         pass
         return jsonify({"error": "Failed to get file"}), 500

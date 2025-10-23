@@ -158,16 +158,19 @@ async function loadThumbs(ids) {
   if (!token) return;
   for (const id of ids) {
     try {
+      // Fetch to get the CloudFront redirect URL
       const res = await fetch(`${BASE}/images/${id}/file?version=thumb`, {
         headers: { Authorization: "Bearer " + token }
       });
       if (!res.ok) continue;
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+
+      // Get the final CloudFront URL after redirect
+      const cloudFrontUrl = res.url;
+
+      // Set the thumbnail image source to CloudFront URL directly
       const img = document.getElementById(`thumb_${id}`);
       if (img) {
-        img.src = url;
-        img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 10000);
+        img.src = cloudFrontUrl;
       }
     } catch (_) { }
   }
@@ -176,29 +179,44 @@ async function loadThumbs(ids) {
 async function openImage(id, version) {
   const token = getToken();
   if (!token) return window.location.href = "/login";
+
+  // Fetch with manual redirect to get the CloudFront URL
   const res = await fetch(`${BASE}/images/${id}/file?version=${version}`, {
+    headers: { Authorization: "Bearer " + token },
+    redirect: 'manual'
+  });
+
+  // For 302 redirects, the response will be opaque, so we need to handle it differently
+  // Instead, let's follow the redirect and get the final URL
+  const res2 = await fetch(`${BASE}/images/${id}/file?version=${version}`, {
     headers: { Authorization: "Bearer " + token }
   });
-  if (!res.ok) return alert(`Open failed: ${res.status} ${res.statusText}`);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank");
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+  if (!res2.ok) return alert(`Open failed: ${res2.status} ${res2.statusText}`);
+
+  // Get the final URL after redirect (CloudFront URL)
+  const cloudFrontUrl = res2.url;
+
+  // Open CloudFront URL directly in new tab
+  window.open(cloudFrontUrl, "_blank");
 }
 
 async function downloadImage(id, version) {
   const token = getToken();
+  if (!token) return window.location.href = "/login";
+
+  // Fetch with download parameter to get CloudFront URL with content-disposition header
   const res = await fetch(`${BASE}/images/${id}/file?version=${version}&download=1`, {
     headers: { Authorization: "Bearer " + token }
   });
+
   if (!res.ok) return alert(`Download failed: ${res.status} ${res.statusText}`);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${id}_${version}.jpg`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+  // Get the final CloudFront URL with response-content-disposition parameter
+  const cloudFrontDownloadUrl = res.url;
+
+  // Open the CloudFront URL - it will trigger download due to content-disposition header
+  window.open(cloudFrontDownloadUrl, "_blank");
 }
 async function showMetadata(imageId) {
   const modal = new bootstrap.Modal(document.getElementById('metadataModal'));
