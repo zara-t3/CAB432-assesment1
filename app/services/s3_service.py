@@ -85,20 +85,20 @@ class S3Service:
     def upload_image(self, file_obj: BinaryIO, user: str, image_id: str, filename: str = "original.jpg") -> str:
         try:
             s3_key = f"images/{user}/{image_id}/{filename}"
-            
+
             self.s3_client.upload_fileobj(
                 file_obj,
                 self.bucket_name,
                 s3_key,
                 ExtraArgs={
                     'ContentType': 'image/jpeg',
-                  
+                    'ContentDisposition': 'inline'
                 }
             )
-            
+
             pass
             return s3_key
-            
+
         except ClientError as e:
             pass
             raise Exception(f"S3 upload failed: {e}")
@@ -106,20 +106,20 @@ class S3Service:
     def upload_processed_image(self, local_file_path: str, user: str, image_id: str, filename: str) -> str:
         try:
             s3_key = f"images/{user}/{image_id}/processed/{filename}"
-            
+
             self.s3_client.upload_file(
                 local_file_path,
                 self.bucket_name,
                 s3_key,
                 ExtraArgs={
                     'ContentType': self._get_content_type(filename),
-                
+                    'ContentDisposition': 'inline'
                 }
             )
-            
+
             pass
             return s3_key
-            
+
         except ClientError as e:
             pass
             raise Exception(f"S3 processed upload failed: {e}")
@@ -194,7 +194,10 @@ class S3Service:
                     thumb_io,
                     self.bucket_name,
                     thumb_s3_key,
-                    ExtraArgs={'ContentType': 'image/jpeg'}
+                    ExtraArgs={
+                        'ContentType': 'image/jpeg',
+                        'ContentDisposition': 'inline'
+                    }
                 )
                 
                 pass
@@ -240,7 +243,8 @@ class S3Service:
                 Bucket=self.bucket_name,
                 Key=s3_key,
                 Body=file_data,
-                ContentType=content_type
+                ContentType=content_type,
+                ContentDisposition='inline'
             )
             pass
             return True
